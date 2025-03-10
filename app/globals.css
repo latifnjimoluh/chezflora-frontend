@@ -1,26 +1,81 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 20 10% 5%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 10% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 10% 5%;
+    --primary: 142 59% 41%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 59% 94%;
+    --secondary-foreground: 20 10% 5%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 20 5% 45%;
+    --accent: 60 80% 90%;
+    --accent-foreground: 20 10% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 5% 90%;
+    --input: 20 5% 90%;
+    --ring: 142 59% 41%;
+    --radius: 0.75rem;
+
+    /* Chart colors */
+    --chart-1: 142 59% 41%;
+    --chart-2: 0 59% 94%;
+    --chart-3: 60 80% 90%;
+    --chart-4: 20 30% 45%;
+  }
+
+  .dark {
+    --background: 20 10% 5%;
+    --foreground: 0 0% 95%;
+    --card: 20 10% 5%;
+    --card-foreground: 0 0% 95%;
+    --popover: 20 10% 5%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 142 59% 41%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 59% 94%;
+    --secondary-foreground: 20 10% 5%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 60 80% 90%;
+    --accent-foreground: 20 10% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 142 59% 41%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+

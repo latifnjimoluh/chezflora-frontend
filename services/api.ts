@@ -2,6 +2,7 @@ import axios from "axios";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+
 // Fonction pour la connexion
 export const loginUser = async (identifier: string, password: string): Promise<any> => {
   try {
@@ -162,7 +163,6 @@ export const updateProfileImage = async (imageFile: File): Promise<any> => {
   }
 };
 
-
 // 🔹 Demander la suppression du compte (envoi d'un OTP)
 export const requestAccountDeletion = async (): Promise<any> => {
   try {
@@ -203,6 +203,245 @@ export const confirmAccountDeletion = async (otp_code: string): Promise<any> => 
     throw error.response?.data || { message: "Code OTP incorrect ou expiré." };
   }
 };
+
+// Fonction pour récupérer tous les produits
+export const getAllProducts = async (): Promise<any> => {
+  try {
+    const response = await axios.get(`${apiUrl}/api/products/get-all-product`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Erreur lors de la récupération des produits", error);
+    throw error.response?.data || { message: "Erreur lors de la récupération des produits." };
+  }
+};
+
+// Fonction pour récupérer un produit spécifique par ID
+export const getProductById = async (id: string): Promise<any> => {
+  try {
+    const response = await axios.get(`${apiUrl}/api/products/get-product/${id}`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Erreur lors de la récupération du produit", error);
+    throw error.response?.data || { message: "Produit non trouvé." };
+  }
+};
+
+// Fonction pour vérifier le stock d'un produit
+export const checkProductStock = async (id: string): Promise<any> => {
+  try {
+    const response = await axios.get(`${apiUrl}/api/products/check-stock/${id}`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Erreur lors de la vérification du stock", error);
+    throw error.response?.data || { message: "Erreur lors de la vérification du stock." };
+  }
+};
+
+// 🔹 Ajouter un produit au panier
+export const addToCart = async (id_produit: number, quantite: number): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.post(
+      `${apiUrl}/api/panier/ajouter-panier`,
+      { id_produit, quantite },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Erreur lors de l'ajout au panier", error);
+    throw error.response?.data || { message: "Impossible d'ajouter le produit au panier." };
+  }
+};
+
+// 🔹 Récupérer le panier de l'utilisateur
+
+export const getCart = async (): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${apiUrl}/api/panier/mon-panier`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const { panier, id_panier } = response.data;
+
+    if (id_panier) {
+      localStorage.setItem("id_panier", id_panier);
+      console.log(" ID du panier stocké dans localStorage :", id_panier);
+    }
+
+    return panier;
+  } catch (error: any) {
+    console.error(" Erreur lors de la récupération du panier", error);
+    throw error.response?.data || { message: "Impossible de récupérer le panier." };
+  }
+};
+
+// 🔹 Supprimer un produit du panier
+export const removeFromCart = async (id_produit: number): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.delete(`${apiUrl}/api/panier/supprimer-panier`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { id_produit },
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error("Erreur lors de la suppression du produit du panier", error);
+    throw error.response?.data || { message: "Impossible de supprimer le produit du panier." };
+  }
+};
+
+// 🔹 Valider et vider le panier
+export const validateCart = async (): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+    const id_panier = localStorage.getItem("id_panier"); // Récupérer l'ID du panier
+
+    if (!id_panier) {
+      throw new Error(" Aucun ID de panier trouvé !");
+    }
+
+    console.log(`Tentative de suppression du panier ID: ${id_panier}`);
+
+    // 🔹 Utilisation de POST au lieu de DELETE
+    const response = await axios.post(`${apiUrl}/api/panier/valider-panier`, 
+      { id_panier }, // Envoyer id_panier dans le body
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    console.log("Panier validé avec succès, suppression du localStorage !");
+    localStorage.removeItem("id_panier"); // Supprimer l'ID du panier du localStorage
+
+    return response.data;
+  } catch (error: any) {
+    console.error(" Erreur lors de la validation du panier", error);
+    throw error.response?.data || { message: "Impossible de valider le panier." };
+  }
+};
+
+// 🔹 Réduire la quantité d'un produit dans le panier
+export const decrementQuantity = async (id_produit: number): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.put(
+      `${apiUrl}/api/panier/reduire-quantite-panier`,
+      { id_produit },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Erreur lors de la mise à jour du panier", error);
+    throw error.response?.data || { message: "Impossible de modifier la quantité du produit." };
+  }
+};
+
+// Fonction pour passer une commande complète
+export const passerCommande = async (commandeData: {
+  produits: Array<{ id_produit: string; quantite: number }>
+  adresse_livraison: string
+  ville: string
+  code_postal: string
+  telephone: string
+  email: string
+  mode_livraison: string
+  mode_paiement: string
+  message?: string
+}): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token")
+    const response = await axios.post(`${apiUrl}/api/commandes/passer-commande`, commandeData, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.data
+  } catch (error: any) {
+    console.error("Erreur lors de la création de la commande", error)
+    throw error.response?.data || { message: "Impossible de créer la commande." }
+  }
+}
+
+export const annulerCommande = async (id_commande: string): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token");
+
+    console.log(`Envoi de la requête d'annulation pour la commande ID: ${id_commande}`);
+
+    const response = await axios.put(
+      `${apiUrl}/api/commandes/annuler-commande`,
+      { id_commande },  // Envoi de l'ID de la commande dans le body
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+
+    console.log("Commande annulée avec succès :", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error(" Erreur lors de l'annulation de la commande :", error);
+    throw error.response?.data || { message: "Impossible d'annuler la commande." };
+  }
+};
+
+// Fonction pour récupérer toutes les commandes de l'utilisateur
+export const getMesCommandes = async (): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token")
+    const response = await axios.get(`${apiUrl}/api/commandes/mes-commandes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.data
+  } catch (error: any) {
+    console.error("Erreur lors de la récupération des commandes", error)
+    throw error.response?.data || { message: "Impossible de récupérer vos commandes." }
+  }
+}
+
+// Fonction pour récupérer les détails d'une commande
+export const getCommandeDetails = async (id_commande: string): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token")
+
+    console.log(`Récupération des détails de la commande : ${id_commande}`)
+
+    const response = await axios.get(`${apiUrl}/api/commandes/commande/${id_commande}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    console.log(" Commande récupérée :", response.data)
+
+    // Vérifier si les produits sont présents
+    if (response.data.commande && response.data.commande.produits) {
+      console.log(` Nombre de produits: ${response.data.commande.produits.length}`)
+    } else {
+      console.warn(" Aucun produit trouvé dans la réponse")
+    }
+
+    return response.data
+  } catch (error: any) {
+    console.error(" Erreur lors de la récupération des détails de la commande :", error)
+    throw error.response?.data || { message: "Impossible de récupérer les détails de la commande." }
+  }
+}
+
+// Fonction pour récupérer les commandes par statut
+export const getMesCommandesParStatut = async (statut: string): Promise<any> => {
+  try {
+    const token = localStorage.getItem("token")
+    const response = await axios.get(`${apiUrl}/api/commandes/statut/${statut}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.data
+  } catch (error: any) {
+    console.error("Erreur lors de la récupération des commandes par statut", error)
+    throw error.response?.data || { message: "Impossible de récupérer vos commandes." }
+  }
+}
+
+
+
 
 
 

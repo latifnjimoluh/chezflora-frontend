@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,31 +12,32 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle2, CreditCard, AlertCircle, Truck, Clock, MapPin } from "lucide-react"
+import { CheckCircle2, CreditCard, AlertCircle, Truck, Clock, MapPin, Loader2 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import { getCart, validateCart, passerCommande } from "@/services/api"
+import { useToast } from "@/hooks/use-toast"
 
 // Sample cart items
-const cartItems = [
-  {
-    id: 1,
-    name: "Bouquet Printanier",
-    image: "/placeholder.svg?height=100&width=100",
-    price: 45.0,
-    quantity: 1,
-  },
-  {
-    id: 3,
-    name: "Orchidée Élégante",
-    image: "/placeholder.svg?height=100&width=100",
-    price: 55.0,
-    quantity: 2,
-  },
-]
+// const cartItems = [
+//   {
+//     id: 1,
+//     name: "Bouquet Printanier",
+//     image: "/placeholder.svg?height=100&width=100",
+//     price: 45.0,
+//     quantity: 1,
+//   },
+//   {
+//     id: 3,
+//     name: "Orchidée Élégante",
+//     image: "/placeholder.svg?height=100&width=100",
+//     price: 55.0,
+//     quantity: 2,
+//   },
+// ]
 
 export default function CommandePage() {
-  
-  const router = useRouter(); // 
+  const router = useRouter() //
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -51,6 +52,43 @@ export default function CommandePage() {
     email: "",
     message: "",
   })
+
+  const [cartItems, setCartItems] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  const formatPrice = (price: number) => {
+    return `${price.toFixed(2).replace(".", ",")} €`
+  }
+
+  useEffect(() => {
+    const fetchCart = async () => {
+        try {
+            setLoading(true);
+            const data = await getCart();
+            setCartItems(data || []);
+
+            // 🔹 Récupérer et afficher l'ID du panier depuis le localStorage
+            const storedPanierId = localStorage.getItem("id_panier");
+            console.log(" ID du panier récupéré depuis localStorage :", storedPanierId);
+
+            // 🔹 Afficher tout le localStorage pour debug
+            console.log("Contenu du localStorage :", localStorage);
+
+        } catch (error: any) {
+            toast({
+                title: "Erreur",
+                description: error.message || "Impossible de charger votre panier",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+      fetchCart();
+  }, [toast]);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -77,26 +115,63 @@ export default function CommandePage() {
     setError(null)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Préparer les données de commande
+      const commandeData = {
+        produits: cartItems.map((item) => ({
+          id_produit: item.id_produit,
+          quantite: item.quantite,
+        })),
+        adresse_livraison: formData.address,
+        ville: formData.city,
+        code_postal: formData.postalCode,
+        telephone: formData.phone,
+        email: formData.email,
+        mode_livraison: deliveryMethod,
+        mode_paiement: paymentMethod,
+        message: formData.message || undefined,
+      }
 
-      // Success scenario
+      // Passer la commande
+      await passerCommande(commandeData)
+
+      // Vider le panier après avoir passé la commande avec succès
+      await validateCart()
+
+      // Afficher le succès
       setSuccess(true)
 
-      // Redirect to order confirmation after a delay
+      // Rediriger vers la page de confirmation après un délai
       setTimeout(() => {
         router.push("/commandes")
       }, 3000)
-    } catch (err) {
-      setError("Une erreur est survenue. Veuillez réessayer.")
+    } catch (err: any) {
+      setError(err.message || "Une erreur est survenue. Veuillez réessayer.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  const subtotal = cartItems.reduce((total, item) => total + Number.parseFloat(item.prix) * item.quantite, 0)
   const deliveryFee = deliveryMethod === "express" ? 9.9 : subtotal >= 50 ? 0 : 5.9
   const total = subtotal + deliveryFee
+
+  const getProductImage = (product: any) => {
+    if (!product) return "/placeholder.svg?height=100&width=100"
+
+    let images = []
+    try {
+      if (typeof product.images === "string") {
+        images = JSON.parse(product.images)
+      } else if (Array.isArray(product.images)) {
+        images = product.images
+      }
+    } catch (e) {
+      console.error("Erreur lors du parsing des images:", e)
+      images = []
+    }
+
+    return images.length > 0 ? images[0] : "/placeholder.svg?height=100&width=100"
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-off-white">
@@ -323,25 +398,35 @@ export default function CommandePage() {
                     <h2 className="font-semibold text-xl text-light-brown mb-4">Récapitulatif</h2>
 
                     <div className="space-y-4 mb-6">
-                      {cartItems.map((item) => (
-                        <div key={item.id} className="flex items-start gap-3">
-                          <div className="relative h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
-                            <Image
-                              src={item.image || "/placeholder.svg"}
-                              alt={item.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-light-brown">{item.name}</p>
-                            <p className="text-sm text-light-brown/70">Quantité: {item.quantity}</p>
-                          </div>
-                          <p className="font-medium text-light-brown">
-                            {(item.price * item.quantity).toFixed(2).replace(".", ",")} €
-                          </p>
+                      {loading ? (
+                        <div className="flex justify-center items-center py-4">
+                          <Loader2 className="h-6 w-6 animate-spin text-soft-green" />
                         </div>
-                      ))}
+                      ) : cartItems.length === 0 ? (
+                        <div className="text-center py-4">
+                          <p className="text-light-brown/70">Votre panier est vide</p>
+                        </div>
+                      ) : (
+                        cartItems.map((item) => (
+                          <div key={item.id_produit} className="flex items-start gap-3">
+                            <div className="relative h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
+                              <Image
+                                src={getProductImage(item) || "/placeholder.svg"}
+                                alt={item.nom}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-light-brown">{item.nom}</p>
+                              <p className="text-sm text-light-brown/70">Quantité: {item.quantite}</p>
+                            </div>
+                            <p className="font-medium text-light-brown">
+                              {formatPrice(Number.parseFloat(item.prix) * item.quantite)}
+                            </p>
+                          </div>
+                        ))
+                      )}
                     </div>
 
                     <div className="space-y-3 mb-6 border-t border-soft-green/10 pt-4">

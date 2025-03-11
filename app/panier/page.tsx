@@ -1,66 +1,209 @@
-"use client";
+"use client"
 
-
-import { usePathname } from 'next/navigation';
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Minus, Plus, ShoppingBag, Trash2, ArrowRight } from "lucide-react"
+import { Minus, Plus, ShoppingBag, Trash2, ArrowRight, Loader2 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-
-// Sample cart items
-const initialCartItems = [
-  {
-    id: 1,
-    name: "Bouquet Printanier",
-    image: "/placeholder.svg?height=200&width=200",
-    price: 45.0,
-    quantity: 1,
-    slug: "/boutique/bouquet-printanier",
-  },
-  {
-    id: 3,
-    name: "Orchidée Élégante",
-    image: "/placeholder.svg?height=200&width=200",
-    price: 55.0,
-    quantity: 2,
-    slug: "/boutique/orchidee-elegante",
-  },
-]
+import { getCart, addToCart, removeFromCart, decrementQuantity } from "@/services/api"
+import { useToast } from "@/hooks/use-toast"
 
 export default function PanierPage() {
-  
-  const router = useRouter();
-  const [cartItems, setCartItems] = useState(initialCartItems)
+  const router = useRouter()
+  const { toast } = useToast()
+  const [cartItems, setCartItems] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [processingItem, setProcessingItem] = useState<string | null>(null)
   const [couponCode, setCouponCode] = useState("")
   const [couponApplied, setCouponApplied] = useState(false)
+  const [validatingCart, setValidatingCart] = useState(false)
 
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity < 1) return
-    setCartItems(cartItems.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item)))
+  // Charger le panier au chargement de la page
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        setLoading(true);
+        const data = await getCart();
+        setCartItems(data || []);
+  
+        // 🔹 Vérifier si l'ID du panier est stocké
+        const storedPanierId = localStorage.getItem("id_panier");
+        console.log(" ID du panier récupéré depuis localStorage :", storedPanierId);
+      } catch (error: any) {
+        toast({
+          title: "Erreur",
+          description: error.message || "Impossible de charger votre panier",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchCart();
+  }, []);
+    
+  const fetchCart = async () => {
+    try {
+      setLoading(true);
+      const data = await getCart();
+      setCartItems(data || []);
+  
+      // Vérifier si un panier existe et stocker son ID dans le Local Storage
+      if (data && data.length > 0) {
+        const id_panier = data[0]?.id_panier; // Supposons que l'ID du panier est dans l'objet produit
+        if (id_panier) {
+          localStorage.setItem("id_panier", id_panier);
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de charger votre panier",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  
   }
 
-  const removeItem = (id: number) => {
-    setCartItems(cartItems.filter((item) => item.id !== id))
+  const updateQuantity = async (id_produit: string, newQuantity: number, currentQuantity: number) => {
+    try {
+      setProcessingItem(id_produit)
+
+      if (newQuantity > currentQuantity) {
+        // Ajouter au panier (augmenter la quantité)
+        const quantityToAdd = newQuantity - currentQuantity
+        await addToCart(id_produit, quantityToAdd)
+      } else if (newQuantity < currentQuantity) {
+        // Réduire la quantité
+        const diff = currentQuantity - newQuantity
+        for (let i = 0; i < diff; i++) {
+          await decrementQuantity(id_produit)
+        }
+      }
+
+      // Rafraîchir le panier
+      await fetchCart()
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour la quantité",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingItem(null)
+    }
+  }
+
+  const removeItem = async (id_produit: string) => {
+    try {
+      setProcessingItem(id_produit)
+      await removeFromCart(id_produit)
+
+      // Rafraîchir le panier
+      await fetchCart()
+
+      toast({
+        title: "Produit supprimé",
+        description: "Le produit a été retiré de votre panier",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le produit",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingItem(null)
+    }
   }
 
   const applyCoupon = () => {
     if (couponCode.trim() === "FLORA10") {
       setCouponApplied(true)
+      toast({
+        title: "Code promo appliqué",
+        description: "Réduction de 10% appliquée à votre commande",
+      })
     } else {
-      alert("Code promo invalide")
+      toast({
+        title: "Code promo invalide",
+        description: "Le code promo saisi n'est pas valide",
+        variant: "destructive",
+      })
     }
   }
 
-  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  const handleCheckout = async () => {
+    try {
+      setValidatingCart(true)
+      // Ne pas appeler validateCart() pour ne pas vider le panier
+      // Simplement rediriger vers la page de commande
+      router.push("/commande")
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de valider votre panier",
+        variant: "destructive",
+      })
+    } finally {
+      setValidatingCart(false)
+    }
+  }
+
+  // Calculer les totaux
+  const subtotal = cartItems.reduce((total, item) => total + Number.parseFloat(item.prix) * item.quantite, 0)
   const discount = couponApplied ? subtotal * 0.1 : 0
   const deliveryFee = subtotal >= 50 ? 0 : 5.9
   const total = subtotal - discount + deliveryFee
+
+  // Fonction pour formater le prix
+  const formatPrice = (price: number) => {
+    return `${price.toFixed(2).replace(".", ",")} €`
+  }
+
+  // Fonction pour extraire les images du produit
+  const getProductImage = (product: any) => {
+    if (!product) return "/placeholder.svg?height=200&width=200"
+
+    let images = []
+    try {
+      if (typeof product.images === "string") {
+        images = JSON.parse(product.images)
+      } else if (Array.isArray(product.images)) {
+        images = product.images
+      }
+    } catch (e) {
+      console.error("Erreur lors du parsing des images:", e)
+      images = []
+    }
+
+    return images.length > 0 ? images[0] : "/placeholder.svg?height=200&width=200"
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-off-white">
+        <Header />
+        <main className="flex-1 py-8 px-4 md:px-8 lg:px-16 bg-off-white">
+          <div className="container mx-auto flex justify-center items-center h-96">
+            <div className="flex flex-col items-center">
+              <Loader2 className="h-8 w-8 animate-spin text-soft-green mb-4" />
+              <p className="text-light-brown">Chargement de votre panier...</p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-off-white">
@@ -96,52 +239,68 @@ export default function PanierPage() {
                     <div className="space-y-6">
                       {cartItems.map((item) => (
                         <div
-                          key={item.id}
+                          key={item.id_produit}
                           className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-6 border-b border-soft-green/10"
                         >
                           <div className="relative h-24 w-24 rounded-md overflow-hidden flex-shrink-0">
                             <Image
-                              src={item.image || "/placeholder.svg"}
-                              alt={item.name}
+                              src={getProductImage(item) || "/placeholder.svg"}
+                              alt={item.nom}
                               fill
                               className="object-cover"
                             />
                           </div>
                           <div className="flex-1">
-                            <Link href={item.slug} className="font-medium text-light-brown hover:text-soft-green">
-                              {item.name}
+                            <Link
+                              href={`/boutique/${item.id_produit}`}
+                              className="font-medium text-light-brown hover:text-soft-green"
+                            >
+                              {item.nom}
                             </Link>
                             <div className="flex flex-wrap items-center gap-4 mt-2">
                               <div className="flex items-center border border-soft-green/20 rounded-md">
                                 <button
-                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  onClick={() => updateQuantity(item.id_produit, item.quantite - 1, item.quantite)}
                                   className="px-2 py-1 text-light-brown hover:bg-soft-green/10 transition-colors"
+                                  disabled={processingItem === item.id_produit || item.quantite <= 1}
                                 >
                                   <Minus className="h-3 w-3" />
                                 </button>
-                                <span className="px-3 py-1 text-light-brown">{item.quantity}</span>
+                                <span className="px-3 py-1 text-light-brown">
+                                  {processingItem === item.id_produit ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    item.quantite
+                                  )}
+                                </span>
                                 <button
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  onClick={() => updateQuantity(item.id_produit, item.quantite + 1, item.quantite)}
                                   className="px-2 py-1 text-light-brown hover:bg-soft-green/10 transition-colors"
+                                  disabled={processingItem === item.id_produit}
                                 >
                                   <Plus className="h-3 w-3" />
                                 </button>
                               </div>
                               <button
-                                onClick={() => removeItem(item.id)}
+                                onClick={() => removeItem(item.id_produit)}
                                 className="text-red-500 hover:text-red-700 flex items-center text-sm"
+                                disabled={processingItem === item.id_produit}
                               >
-                                <Trash2 className="h-3 w-3 mr-1" />
+                                {processingItem === item.id_produit ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                ) : (
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                )}
                                 Supprimer
                               </button>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-light-brown">
-                              {(item.price * item.quantity).toFixed(2).replace(".", ",")} €
+                              {formatPrice(Number.parseFloat(item.prix) * item.quantite)}
                             </p>
                             <p className="text-sm text-light-brown/70">
-                              {item.price.toFixed(2).replace(".", ",")} € l'unité
+                              {formatPrice(Number.parseFloat(item.prix))} l'unité
                             </p>
                           </div>
                         </div>
@@ -155,13 +314,6 @@ export default function PanierPage() {
                         onClick={() => router.push("/boutique")}
                       >
                         Continuer mes achats
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => setCartItems([])}
-                      >
-                        Vider le panier
                       </Button>
                     </div>
                   </CardContent>
@@ -177,23 +329,23 @@ export default function PanierPage() {
                     <div className="space-y-3 mb-6">
                       <div className="flex justify-between">
                         <span className="text-light-brown/70">Sous-total</span>
-                        <span className="text-light-brown">{subtotal.toFixed(2).replace(".", ",")} €</span>
+                        <span className="text-light-brown">{formatPrice(subtotal)}</span>
                       </div>
                       {couponApplied && (
                         <div className="flex justify-between text-soft-green">
                           <span>Réduction (10%)</span>
-                          <span>-{discount.toFixed(2).replace(".", ",")} €</span>
+                          <span>-{formatPrice(discount)}</span>
                         </div>
                       )}
                       <div className="flex justify-between">
                         <span className="text-light-brown/70">Livraison</span>
                         <span className="text-light-brown">
-                          {deliveryFee === 0 ? "Gratuite" : `${deliveryFee.toFixed(2).replace(".", ",")} €`}
+                          {deliveryFee === 0 ? "Gratuite" : formatPrice(deliveryFee)}
                         </span>
                       </div>
                       <div className="border-t border-soft-green/10 pt-3 flex justify-between font-semibold">
                         <span className="text-light-brown">Total</span>
-                        <span className="text-light-brown">{total.toFixed(2).replace(".", ",")} €</span>
+                        <span className="text-light-brown">{formatPrice(total)}</span>
                       </div>
                     </div>
 
@@ -216,10 +368,20 @@ export default function PanierPage() {
 
                       <Button
                         className="w-full bg-soft-green hover:bg-soft-green/90 text-white"
-                        onClick={() => router.push("/commande")}
+                        onClick={handleCheckout}
+                        disabled={validatingCart || cartItems.length === 0}
                       >
-                        Valider ma commande
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        {validatingCart ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Traitement...
+                          </>
+                        ) : (
+                          <>
+                            Valider ma commande
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
                       </Button>
 
                       <div className="text-sm text-light-brown/70 text-center">

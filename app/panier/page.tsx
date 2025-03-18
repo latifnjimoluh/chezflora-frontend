@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Minus, Plus, ShoppingBag, Trash2, ArrowRight, Loader2 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { getCart, addToCart, removeFromCart, decrementQuantity } from "@/services/api"
+import { getCart, addToCart, removeFromCart, decrementCartItem } from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
 
 export default function PanierPage() {
@@ -23,151 +23,147 @@ export default function PanierPage() {
   const [couponApplied, setCouponApplied] = useState(false)
   const [validatingCart, setValidatingCart] = useState(false)
 
-  // Charger le panier au chargement de la page
-  useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        setLoading(true);
-        const data = await getCart();
-        setCartItems(data || []);
-  
-        // 🔹 Vérifier si l'ID du panier est stocké
-        const storedPanierId = localStorage.getItem("id_panier");
-        console.log(" ID du panier récupéré depuis localStorage :", storedPanierId);
-      } catch (error: any) {
-        toast({
-          title: "Erreur",
-          description: error.message || "Impossible de charger votre panier",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    fetchCart();
-  }, []);
-    
-  const fetchCart = async () => {
-    try {
-      setLoading(true);
-      const data = await getCart();
-      setCartItems(data || []);
-  
-      // Vérifier si un panier existe et stocker son ID dans le Local Storage
-      if (data && data.length > 0) {
-        const id_panier = data[0]?.id_panier; // Supposons que l'ID du panier est dans l'objet produit
-        if (id_panier) {
-          localStorage.setItem("id_panier", id_panier);
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de charger votre panier",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  
-  }
+ // ✅ Charger le panier au premier rendu
+ useEffect(() => {
+  fetchCart();
+}, []);
 
-  const updateQuantity = async (id_produit: string, newQuantity: number, currentQuantity: number) => {
-    try {
-      setProcessingItem(id_produit)
+// ✅ Fonction pour récupérer le panier
+const fetchCart = async () => {
+  try {
+    setLoading(true);
+    const data = await getCart();
 
-      if (newQuantity > currentQuantity) {
-        // Ajouter au panier (augmenter la quantité)
-        const quantityToAdd = newQuantity - currentQuantity
-        await addToCart(id_produit, quantityToAdd)
-      } else if (newQuantity < currentQuantity) {
-        // Réduire la quantité
-        const diff = currentQuantity - newQuantity
-        for (let i = 0; i < diff; i++) {
-          await decrementQuantity(id_produit)
-        }
-      }
+    console.log("🛒 Données reçues du panier :", data);
 
-      // Rafraîchir le panier
-      await fetchCart()
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de mettre à jour la quantité",
-        variant: "destructive",
-      })
-    } finally {
-      setProcessingItem(null)
-    }
-  }
-
-  const removeItem = async (id_produit: string) => {
-    try {
-      setProcessingItem(id_produit)
-      await removeFromCart(id_produit)
-
-      // Rafraîchir le panier
-      await fetchCart()
-
-      toast({
-        title: "Produit supprimé",
-        description: "Le produit a été retiré de votre panier",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le produit",
-        variant: "destructive",
-      })
-    } finally {
-      setProcessingItem(null)
-    }
-  }
-
-  const applyCoupon = () => {
-    if (couponCode.trim() === "FLORA10") {
-      setCouponApplied(true)
-      toast({
-        title: "Code promo appliqué",
-        description: "Réduction de 10% appliquée à votre commande",
-      })
+    if (data && Array.isArray(data.panier)) {
+      setCartItems(data.panier);
     } else {
-      toast({
-        title: "Code promo invalide",
-        description: "Le code promo saisi n'est pas valide",
-        variant: "destructive",
-      })
+      console.error("⚠️ Données du panier incorrectes :", data);
+      setCartItems([]);
     }
-  }
 
-  const handleCheckout = async () => {
-    try {
-      setValidatingCart(true)
-      // Ne pas appeler validateCart() pour ne pas vider le panier
-      // Simplement rediriger vers la page de commande
-      router.push("/commande")
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de valider votre panier",
-        variant: "destructive",
-      })
-    } finally {
-      setValidatingCart(false)
+    if (data?.id_panier) {
+      localStorage.setItem("id_panier", String(data.id_panier));
     }
+  } catch (error: any) {
+    toast({
+      title: "Erreur",
+      description: error.message || "Impossible de charger votre panier",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
   }
+};
 
-  // Calculer les totaux
-  const subtotal = cartItems.reduce((total, item) => total + Number.parseFloat(item.prix) * item.quantite, 0)
-  const discount = couponApplied ? subtotal * 0.1 : 0
-  const deliveryFee = subtotal >= 50 ? 0 : 5.9
-  const total = subtotal - discount + deliveryFee
+const updateQuantity = async (id_produit: string, newQuantity: number, currentQuantity: number) => {
+  try {
+    setProcessingItem(id_produit);
 
-  // Fonction pour formater le prix
-  const formatPrice = (price: number) => {
-    return `${price.toFixed(2).replace(".", ",")} €`
+    if (!id_produit || typeof id_produit !== "string") {
+      console.error("❌ ID produit invalide :", id_produit);
+      return;
+    }
+
+    if (newQuantity > currentQuantity) {
+      const quantityToAdd = newQuantity - currentQuantity;
+      console.log(`➕ Ajout de ${quantityToAdd} exemplaires du produit ${id_produit}`);
+      await addToCart(id_produit, quantityToAdd);
+    } else if (newQuantity < currentQuantity) {
+      const quantityToRemove = currentQuantity - newQuantity;
+      console.log(`➖ Suppression de ${quantityToRemove} exemplaires du produit ${id_produit}`);
+      for (let i = 0; i < quantityToRemove; i++) {
+        await decrementCartItem(id_produit);
+      }
+    }
+
+    await fetchCart(); // 🔄 Rafraîchir le panier après mise à jour
+  } catch (error: any) {
+    toast({
+      title: "Erreur",
+      description: error.message || "Impossible de mettre à jour la quantité",
+      variant: "destructive",
+    });
+  } finally {
+    setProcessingItem(null);
   }
+};
+
+const removeItem = async (id_produit: string) => {
+  try {
+    setProcessingItem(id_produit);
+
+    if (!id_produit || typeof id_produit !== "string") {
+      console.error("❌ ID produit invalide :", id_produit);
+      return;
+    }
+
+    await removeFromCart(id_produit);
+    await fetchCart(); // 🔄 Rafraîchir le panier après suppression
+
+    toast({
+      title: "Produit supprimé",
+      description: "Le produit a été retiré de votre panier",
+    });
+  } catch (error: any) {
+    toast({
+      title: "Erreur",
+      description: error.message || "Impossible de supprimer le produit",
+      variant: "destructive",
+    });
+  } finally {
+    setProcessingItem(null);
+  }
+};
+
+
+const applyCoupon = () => {
+  if (couponCode.trim() === "FLORA10") {
+    setCouponApplied(true)
+    toast({
+      title: "Code promo appliqué",
+      description: "Réduction de 10% appliquée à votre commande",
+    })
+  } else {
+    toast({
+      title: "Code promo invalide",
+      description: "Le code promo saisi n'est pas valide",
+      variant: "destructive",
+    })
+  }
+}
+
+const handleCheckout = async () => {
+  try {
+    setValidatingCart(true)
+    // Ne pas appeler validateCart() pour ne pas vider le panier
+    // Simplement rediriger vers la page de commande
+    router.push("/commande")
+  } catch (error: any) {
+    toast({
+      title: "Erreur",
+      description: error.message || "Impossible de valider votre panier",
+      variant: "destructive",
+    })
+  } finally {
+    setValidatingCart(false)
+  }
+}
+
+// ✅ Calculer les totaux
+const subtotal = Array.isArray(cartItems)
+  ? cartItems.reduce((total, item) => total + (parseFloat(item.prix || "0") * (item.quantite || 0)), 0)
+  : 0;
+
+const discount = couponApplied ? subtotal * 0.1 : 0;
+const deliveryFee = subtotal >= 50 ? 0 : 5.9;
+const total = subtotal - discount + deliveryFee;
+
+// ✅ Fonction pour formater le prix
+const formatPrice = (price: number) => {
+  return `${price.toFixed(2).replace(".", ",")} €`;
+};
 
   // Fonction pour extraire les images du produit
   const getProductImage = (product: any) => {
@@ -216,30 +212,37 @@ export default function PanierPage() {
             Vérifiez vos articles et finalisez votre commande pour recevoir vos fleurs fraîches
           </p>
 
-          {cartItems.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="flex justify-center mb-4">
-                <ShoppingBag className="h-16 w-16 text-light-brown/30" />
+            {!Array.isArray(cartItems) || cartItems.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="flex justify-center mb-4">
+                  <ShoppingBag className="h-16 w-16 text-light-brown/30" />
+                </div>
+                <h2 className="text-xl font-semibold text-light-brown mb-2">Votre panier est vide</h2>
+                <p className="text-light-brown/70 mb-6">Ajoutez des produits à votre panier pour continuer vos achats</p>
+                <Button
+                  className="bg-soft-green hover:bg-soft-green/90 text-white"
+                  onClick={() => router.push("/boutique")}
+                >
+                  Découvrir nos produits
+                </Button>
+                <Button
+                  variant="outline"
+                  className="mt-4 border-light-brown text-light-brown hover:bg-light-brown/10"
+                  onClick={fetchCart} // 🔹 Permet de recharger le panier si besoin
+                >
+                  Rafraîchir le panier
+                </Button>
               </div>
-              <h2 className="text-xl font-semibold text-light-brown mb-2">Votre panier est vide</h2>
-              <p className="text-light-brown/70 mb-6">Ajoutez des produits à votre panier pour continuer vos achats</p>
-              <Button
-                className="bg-soft-green hover:bg-soft-green/90 text-white"
-                onClick={() => router.push("/boutique")}
-              >
-                Découvrir nos produits
-              </Button>
-            </div>
-          ) : (
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Cart Items */}
               <div className="lg:col-span-2">
                 <Card className="border-none shadow-md">
                   <CardContent className="p-6">
                     <div className="space-y-6">
-                      {cartItems.map((item) => (
+                      {cartItems.map((item, index) => (
                         <div
-                          key={item.id_produit}
+                          key={item.id_produit || `item-${index}`}
                           className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-6 border-b border-soft-green/10"
                         >
                           <div className="relative h-24 w-24 rounded-md overflow-hidden flex-shrink-0">
@@ -252,14 +255,15 @@ export default function PanierPage() {
                           </div>
                           <div className="flex-1">
                             <Link
-                              href={`/boutique/${item.id_produit}`}
+                              href={`/boutique/${item.id_produit || "#"}`}
                               className="font-medium text-light-brown hover:text-soft-green"
                             >
-                              {item.nom}
+                              {item.nom || "Produit sans nom"}
                             </Link>
                             <div className="flex flex-wrap items-center gap-4 mt-2">
                               <div className="flex items-center border border-soft-green/20 rounded-md">
                                 <button
+                                  aria-label="Diminuer la quantité"
                                   onClick={() => updateQuantity(item.id_produit, item.quantite - 1, item.quantite)}
                                   className="px-2 py-1 text-light-brown hover:bg-soft-green/10 transition-colors"
                                   disabled={processingItem === item.id_produit || item.quantite <= 1}
@@ -274,6 +278,7 @@ export default function PanierPage() {
                                   )}
                                 </span>
                                 <button
+                                  aria-label="Augmenter la quantité"
                                   onClick={() => updateQuantity(item.id_produit, item.quantite + 1, item.quantite)}
                                   className="px-2 py-1 text-light-brown hover:bg-soft-green/10 transition-colors"
                                   disabled={processingItem === item.id_produit}
@@ -297,10 +302,10 @@ export default function PanierPage() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-light-brown">
-                              {formatPrice(Number.parseFloat(item.prix) * item.quantite)}
+                            {formatPrice(parseFloat(item.prix || "0") * (item.quantite || 0))}
                             </p>
                             <p className="text-sm text-light-brown/70">
-                              {formatPrice(Number.parseFloat(item.prix))} l'unité
+                            {formatPrice(parseFloat(item.prix || "0"))} l'unité
                             </p>
                           </div>
                         </div>

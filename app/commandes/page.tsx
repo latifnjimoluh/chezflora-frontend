@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Package, Truck, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { getMesCommandes, annulerCommande, getCommandeDetails } from "@/services/api"
+import { getUserOrders, cancelOrder, getOrderDetails } from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
@@ -78,7 +78,7 @@ export default function CommandesPage() {
     const fetchOrders = async () => {
       try {
         setLoading(true)
-        const data = await getMesCommandes()
+        const data = await getUserOrders()
 
         // Formater les données pour correspondre à notre structure
         const formattedOrders = data.map((order: any) => ({
@@ -131,7 +131,7 @@ export default function CommandesPage() {
     if (!orderDetails[orderId]) {
       try {
         setLoadingDetails((prev) => ({ ...prev, [orderId]: true }))
-        const details = await getCommandeDetails(orderId)
+        const details = await getOrderDetails(orderId)
 
         // Mettre à jour les détails de la commande
         setOrderDetails((prev) => ({
@@ -175,7 +175,7 @@ export default function CommandesPage() {
         return
       }
 
-      await annulerCommande(orderId)
+      await cancelOrder(orderId)
 
       // Mettre à jour l'état local pour refléter l'annulation
       setOrders(orders.map((order) => (order.id_commande === orderId ? { ...order, statut: "annulé" } : order)))
@@ -194,36 +194,65 @@ export default function CommandesPage() {
     }
   }
 
-  // Fonction pour obtenir le badge de statut
+  // Fonction pour obtenir le badge de statut - version dynamique
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "commandé":
-        return <Badge className="bg-amber-500">Commandée</Badge>
-      case "en attente de livraison":
-        return <Badge className="bg-blue-500">En préparation</Badge>
-      case "livré":
-        return <Badge className="bg-soft-green">Livrée</Badge>
-      case "annulé":
-        return <Badge className="bg-red-500">Annulée</Badge>
-      default:
-        return <Badge className="bg-gray-500">En attente</Badge>
+    // Convertir le statut en minuscules pour une comparaison insensible à la casse
+    const statusLower = status.toLowerCase()
+
+    // Définir les couleurs et les libellés en fonction de mots-clés dans le statut
+    if (statusLower.includes("annul") || statusLower.includes("cancel")) {
+      return <Badge className="bg-red-500">{status}</Badge>
     }
+
+    if (statusLower.includes("livr") || statusLower.includes("deliver")) {
+      return <Badge className="bg-soft-green">{status}</Badge>
+    }
+
+    if (
+      statusLower.includes("attente") ||
+      statusLower.includes("prépar") ||
+      statusLower.includes("prepar") ||
+      statusLower.includes("wait")
+    ) {
+      return <Badge className="bg-blue-500">{status}</Badge>
+    }
+
+    if (statusLower.includes("command") || statusLower.includes("order")) {
+      return <Badge className="bg-amber-500">{status}</Badge>
+    }
+
+    // Statut par défaut pour tout autre cas
+    return <Badge className="bg-gray-500">{status}</Badge>
   }
 
-  // Fonction pour obtenir l'icône de statut
+  // Fonction pour obtenir l'icône de statut - également mise à jour pour être dynamique
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "commandé":
-        return <Package className="h-5 w-5 text-amber-500" />
-      case "en attente de livraison":
-        return <Truck className="h-5 w-5 text-blue-500" />
-      case "livré":
-        return <CheckCircle className="h-5 w-5 text-soft-green" />
-      case "annulé":
-        return <XCircle className="h-5 w-5 text-red-500" />
-      default:
-        return <Package className="h-5 w-5 text-gray-500" />
+    // Convertir le statut en minuscules pour une comparaison insensible à la casse
+    const statusLower = status.toLowerCase()
+
+    if (statusLower.includes("annul") || statusLower.includes("cancel")) {
+      return <XCircle className="h-5 w-5 text-red-500" />
     }
+
+    if (statusLower.includes("livr") || statusLower.includes("deliver")) {
+      return <CheckCircle className="h-5 w-5 text-soft-green" />
+    }
+
+    if (
+      statusLower.includes("attente") ||
+      statusLower.includes("prépar") ||
+      statusLower.includes("prepar") ||
+      statusLower.includes("wait")
+    ) {
+      return <Truck className="h-5 w-5 text-blue-500" />
+    }
+
+    if (statusLower.includes("command") || statusLower.includes("order")) {
+      return <Package className="h-5 w-5 text-amber-500" />
+    }
+
+    // Icône par défaut pour tout autre cas
+    return <Package className="h-5 w-5 text-gray-500" />
   }
 
   // Filtrer les commandes en fonction de l'onglet actif

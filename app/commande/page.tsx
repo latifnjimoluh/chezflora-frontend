@@ -15,26 +15,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, CreditCard, AlertCircle, Truck, Clock, MapPin, Loader2 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { getCart, validateCart, passerCommande } from "@/services/api"
+import { getCart, validateCart, placeOrder } from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
-
-// Sample cart items
-// const cartItems = [
-//   {
-//     id: 1,
-//     name: "Bouquet Printanier",
-//     image: "/placeholder.svg?height=100&width=100",
-//     price: 45.0,
-//     quantity: 1,
-//   },
-//   {
-//     id: 3,
-//     name: "Orchidée Élégante",
-//     image: "/placeholder.svg?height=100&width=100",
-//     price: 55.0,
-//     quantity: 2,
-//   },
-// ]
 
 export default function CommandePage() {
   const router = useRouter() //
@@ -63,32 +45,46 @@ export default function CommandePage() {
 
   useEffect(() => {
     const fetchCart = async () => {
-        try {
-            setLoading(true);
-            const data = await getCart();
-            setCartItems(data || []);
+      try {
+        setLoading(true)
 
-            // 🔹 Récupérer et afficher l'ID du panier depuis le localStorage
-            const storedPanierId = localStorage.getItem("id_panier");
-            console.log(" ID du panier récupéré depuis localStorage :", storedPanierId);
-
-            // 🔹 Afficher tout le localStorage pour debug
-            console.log("Contenu du localStorage :", localStorage);
-
-        } catch (error: any) {
-            toast({
-                title: "Erreur",
-                description: error.message || "Impossible de charger votre panier",
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
+        // 🔹 Vérifier si l'utilisateur est connecté
+        const token = localStorage.getItem("token")
+        if (!token) {
+          console.error("⚠️ Aucun token trouvé. Redirection vers la connexion...")
+          router.push("/login")
+          return
         }
-    };
 
-      fetchCart();
-  }, [toast]);
+        // 🔹 Récupérer le panier de l'utilisateur
+        const data = await getCart(token)
 
+        // 🔹 Vérifier et stocker les produits
+        if (data && Array.isArray(data.panier)) {
+          setCartItems(data.panier)
+        } else {
+          console.error("⚠️ Données du panier incorrectes :", data)
+          setCartItems([])
+        }
+
+        // 🔹 Stocker l'ID du panier dans le `localStorage`
+        if (data?.id_panier) {
+          localStorage.setItem("id_panier", data.id_panier)
+        }
+      } catch (error: any) {
+        toast({
+          title: "Erreur",
+          description: error.message || "Impossible de charger votre panier",
+          variant: "destructive",
+        })
+        setCartItems([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCart()
+  }, [toast, router])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -132,10 +128,17 @@ export default function CommandePage() {
       }
 
       // Passer la commande
-      await passerCommande(commandeData)
+      await placeOrder(commandeData)
+
+      // Récupérer l'ID du panier depuis localStorage
+      const id_panier = localStorage.getItem("id_panier")
 
       // Vider le panier après avoir passé la commande avec succès
-      await validateCart()
+      if (id_panier) {
+        await validateCart(id_panier)
+      } else {
+        console.warn("ID du panier non trouvé dans localStorage")
+      }
 
       // Afficher le succès
       setSuccess(true)
@@ -151,7 +154,18 @@ export default function CommandePage() {
     }
   }
 
-  const subtotal = cartItems.reduce((total, item) => total + Number.parseFloat(item.prix) * item.quantite, 0)
+  // Calculer le sous-total de manière sécurisée
+  const calculateSubtotal = () => {
+    if (!Array.isArray(cartItems) || cartItems.length === 0) return 0
+
+    return cartItems.reduce((total, item) => {
+      const prix = typeof item.prix === "string" ? Number.parseFloat(item.prix) : item.prix || 0
+      const quantite = item.quantite || 0
+      return total + prix * quantite
+    }, 0)
+  }
+
+  const subtotal = calculateSubtotal()
   const deliveryFee = deliveryMethod === "express" ? 9.9 : subtotal >= 50 ? 0 : 5.9
   const total = subtotal + deliveryFee
 

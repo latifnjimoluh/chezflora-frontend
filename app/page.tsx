@@ -1,19 +1,113 @@
 "use client"
 
-
-import { usePathname } from 'next/navigation';
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import ProductCarousel from "@/components/product-carousel"
 import TestimonialCard from "@/components/testimonial-card"
 import BlogCard from "@/components/blog-card"
-import { Flower, Truck, Gift, Calendar } from "lucide-react"
+import { Flower, Truck, Gift, Loader2 } from "lucide-react"
+import API from "@/services/apis"
+
+// Types pour les données
+interface Product {
+  id_produit: string | number
+  nom: string
+  description: string
+  prix: number
+  images: string | string[]
+  categorie: string
+  stock: number
+  statut: string
+}
+
+interface Service {
+  id_service: string | number
+  nom: string
+  description: string
+  categorie: string
+  tarification: string | number
+  images: string | string[]
+}
+
+interface BlogPost {
+  id: number
+  title: string
+  slug: string
+  excerpt: string
+  image: string
+  date: string
+}
+
+interface Testimonial {
+  id: number
+  name: string
+  text: string
+  rating: number
+  image: string
+}
 
 export default function Home() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        // Récupérer les produits mis en avant
+        const products = await API.products.getFeaturedProducts()
+        setFeaturedProducts(products || [])
+
+        // Récupérer les services
+        const servicesData = await API.services.getAllServices()
+        setServices(servicesData || [])
+
+        // Récupérer les articles de blog aléatoires
+        const blogData = await API.blog.getRandomPosts(3)
+        setBlogPosts(blogData || [])
+
+        // Récupérer les témoignages mis en avant
+        const testimonialData = await API.testimonials.getFeatured()
+        setTestimonials(testimonialData || [])
+      } catch (err: any) {
+        console.error("Erreur lors du chargement des données de la page d'accueil:", err)
+        setError("Impossible de charger les données. Veuillez réessayer plus tard.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchHomeData()
+  }, [])
+
+  // Fonction pour parser les images JSON si nécessaire
+  const parseImages = (images: string | string[]): string[] => {
+    if (typeof images === "string") {
+      try {
+        return JSON.parse(images)
+      } catch (e) {
+        return [images]
+      }
+    }
+    return images
+  }
+
+  // Fonction pour obtenir la première image d'un produit ou service
+  const getFirstImage = (images: string | string[]): string => {
+    const parsedImages = parseImages(images)
+    return parsedImages && parsedImages.length > 0 ? parsedImages[0] : "/placeholder.svg?height=400&width=400"
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-off-white">
       <Header />
@@ -32,7 +126,9 @@ export default function Home() {
           <h1 className="font-script mb-6 text-center text-4xl md:text-5xl lg:text-6xl">
             Offrez un peu de nature et d'élégance avec ChezFlora
           </h1>
-          <Button className="bg-soft-green hover:bg-soft-green/90 text-white">Découvrir nos produits</Button>
+          <Button className="bg-soft-green hover:bg-soft-green/90 text-white">
+            <Link href="/products">Découvrir nos produits</Link>
+          </Button>
         </div>
       </section>
 
@@ -81,10 +177,54 @@ export default function Home() {
             et toutes les occasions.
           </p>
 
-          <ProductCarousel />
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-12 w-12 animate-spin text-soft-green" />
+            </div>
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredProducts.slice(0, 6).map((product) => (
+                <Card
+                  key={product.id_produit}
+                  className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  <Link href={`/products/${product.id_produit}`} className="block">
+                    <div className="relative h-64 w-full">
+                      <Image
+                        src={getFirstImage(product.images) || "/placeholder.svg"}
+                        alt={product.nom}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute top-2 left-2 bg-powder-pink px-2 py-1 rounded-full text-xs text-light-brown">
+                        {product.categorie}
+                      </div>
+                      {product.stock <= 0 && (
+                        <div className="absolute top-2 right-2 bg-red-500 px-2 py-1 rounded-full text-xs text-white">
+                          Rupture de stock
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-script text-xl text-light-brown mb-2">{product.nom}</h3>
+                      <p className="text-light-brown/80 mb-3 line-clamp-2">{product.description}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-soft-green font-semibold">{product.prix} €</span>
+                        <span className="text-soft-green hover:underline">Voir détails →</span>
+                      </div>
+                    </CardContent>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-light-brown">Aucun produit mis en avant pour le moment.</p>
+          )}
 
           <div className="flex justify-center mt-12">
-            <Button className="bg-beige hover:bg-beige/90 text-light-brown">Voir la boutique</Button>
+            <Button className="bg-beige hover:bg-beige/90 text-light-brown">
+              <Link href="/products">Voir la boutique</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -98,61 +238,45 @@ export default function Home() {
             professionnels.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="bg-white border-none shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="bg-soft-green/10 p-4 rounded-full mb-4">
-                    <Calendar className="h-8 w-8 text-soft-green" />
-                  </div>
-                  <h3 className="font-semibold text-xl mb-2 text-light-brown">Mariages</h3>
-                  <p className="text-light-brown/80 mb-4">
-                    Des compositions florales qui sublimeront votre jour spécial
-                  </p>
-                  <Link href="/services/mariages" className="text-soft-green hover:underline">
-                    En savoir plus
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white border-none shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="bg-soft-green/10 p-4 rounded-full mb-4">
-                    <Gift className="h-8 w-8 text-soft-green" />
-                  </div>
-                  <h3 className="font-semibold text-xl mb-2 text-light-brown">Événements</h3>
-                  <p className="text-light-brown/80 mb-4">
-                    Décorations florales pour vos événements professionnels et privés
-                  </p>
-                  <Link href="/services/evenements" className="text-soft-green hover:underline">
-                    En savoir plus
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white border-none shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="bg-soft-green/10 p-4 rounded-full mb-4">
-                    <Flower className="h-8 w-8 text-soft-green" />
-                  </div>
-                  <h3 className="font-semibold text-xl mb-2 text-light-brown">Abonnements</h3>
-                  <p className="text-light-brown/80 mb-4">
-                    Recevez régulièrement des fleurs fraîches à votre domicile ou bureau
-                  </p>
-                  <Link href="/services/abonnements" className="text-soft-green hover:underline">
-                    En savoir plus
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-12 w-12 animate-spin text-soft-green" />
+            </div>
+          ) : services.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {services.slice(0, 3).map((service) => (
+                <Card
+                  key={service.id_service}
+                  className="bg-white border-none shadow-md hover:shadow-lg transition-shadow duration-300"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex flex-col items-center text-center">
+                      <div className="relative h-48 w-full mb-4 rounded-md overflow-hidden">
+                        <Image
+                          src={getFirstImage(service.images) || "/placeholder.svg"}
+                          alt={service.nom}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <h3 className="font-semibold text-xl mb-2 text-light-brown">{service.nom}</h3>
+                      <p className="text-light-brown/80 mb-4 line-clamp-3">{service.description}</p>
+                      <Link href={`/services/${service.id_service}`} className="text-soft-green hover:underline">
+                        En savoir plus
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-light-brown">Aucun service disponible pour le moment.</p>
+          )}
 
           <div className="flex justify-center mt-12">
-            <Button className="bg-powder-pink hover:bg-powder-pink/90 text-light-brown">Réserver un service</Button>
+            <Button className="bg-powder-pink hover:bg-powder-pink/90 text-light-brown">
+              <Link href="/services/reservation">Réserver un service</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -164,26 +288,25 @@ export default function Home() {
             Ce que disent nos clients
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <TestimonialCard
-              name="Sophie Martin"
-              image="/placeholder.svg?height=100&width=100"
-              rating={5}
-              text="Les fleurs étaient magnifiques et ont duré bien plus longtemps que prévu. Le service client est impeccable !"
-            />
-            <TestimonialCard
-              name="Thomas Dubois"
-              image="/placeholder.svg?height=100&width=100"
-              rating={5}
-              text="ChezFlora a décoré notre mariage et le résultat était au-delà de nos espérances. Merci pour votre créativité !"
-            />
-            <TestimonialCard
-              name="Marie Leroy"
-              image="/placeholder.svg?height=100&width=100"
-              rating={4}
-              text="Je suis abonnée depuis 6 mois et chaque bouquet est une nouvelle surprise. Fraîcheur et originalité garanties."
-            />
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-12 w-12 animate-spin text-soft-green" />
+            </div>
+          ) : testimonials.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {testimonials.map((testimonial) => (
+                <TestimonialCard
+                  key={testimonial.id}
+                  name={testimonial.name}
+                  image={testimonial.image || "/placeholder.svg?height=100&width=100"}
+                  rating={testimonial.rating}
+                  text={testimonial.text}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-light-brown">Aucun témoignage disponible pour le moment.</p>
+          )}
         </div>
       </section>
 
@@ -192,33 +315,30 @@ export default function Home() {
         <div className="container mx-auto">
           <h2 className="font-script text-center text-3xl md:text-4xl text-light-brown mb-8">Blog & Inspirations</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <BlogCard
-              title="Comment prendre soin de vos orchidées"
-              image="/placeholder.svg?height=200&width=400"
-              excerpt="Découvrez nos conseils d'experts pour garder vos orchidées en pleine santé toute l'année."
-              date="12 mai 2023"
-              slug="/blog/soin-orchidees"
-            />
-            <BlogCard
-              title="Les tendances florales de la saison"
-              image="/placeholder.svg?height=200&width=400"
-              excerpt="Quelles sont les fleurs et les compositions qui font sensation cette saison ? Notre guide complet."
-              date="28 avril 2023"
-              slug="/blog/tendances-florales"
-            />
-            <BlogCard
-              title="Créer un jardin d'intérieur durable"
-              image="/placeholder.svg?height=200&width=400"
-              excerpt="Nos astuces pour aménager un espace vert chez vous, même avec peu de place et de lumière."
-              date="15 avril 2023"
-              slug="/blog/jardin-interieur"
-            />
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-12 w-12 animate-spin text-soft-green" />
+            </div>
+          ) : blogPosts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {blogPosts.map((post) => (
+                <BlogCard
+                  key={post.id}
+                  title={post.title}
+                  image={post.image || "/placeholder.svg?height=200&width=400"}
+                  excerpt={post.excerpt}
+                  date={post.date}
+                  slug={post.slug}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-light-brown">Aucun article de blog disponible pour le moment.</p>
+          )}
 
           <div className="flex justify-center mt-12">
             <Button variant="outline" className="border-light-brown text-light-brown hover:bg-light-brown/10">
-              Voir tous les articles
+              <Link href="/blog">Voir tous les articles</Link>
             </Button>
           </div>
         </div>

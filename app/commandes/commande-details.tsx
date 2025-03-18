@@ -36,7 +36,7 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { useToast } from "@/hooks/use-toast"
 
-import {getCommandeDetails, annulerCommande} from "@/services/api"
+import {getOrderDetails, cancelOrder} from "@/services/api"
 
 
 export default function CommandeDetailsPage({ params }: { params: { id: string } }) {
@@ -58,7 +58,7 @@ export default function CommandeDetailsPage({ params }: { params: { id: string }
     try {
       setLoading(true)
       setError(null)
-      const data = await getCommandeDetails(id)
+      const data = await getOrderDetails(id)
       setOrder(data)
     } catch (error: any) {
       setError(error.message || "Impossible de charger les détails de la commande")
@@ -75,7 +75,7 @@ export default function CommandeDetailsPage({ params }: { params: { id: string }
   const handleCancelOrder = async () => {
     try {
       setCancelLoading(true)
-      await annulerCommande(params.id)
+      await cancelOrder(params.id)
 
       // Rafraîchir les détails de la commande
       await fetchOrderDetails(params.id)

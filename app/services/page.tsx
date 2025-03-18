@@ -1,123 +1,140 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Gift, Flower, Users, Star } from "lucide-react"
+import { Calendar, Gift, Building, Flower, Loader2, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import API, { type Service } from "@/services/apis"
 
-// Sample services data
-const services = [
-  {
-    id: 1,
-    name: "Décoration de Mariage",
-    image: "/placeholder.svg?height=400&width=600",
-    icon: Calendar,
-    description: "Des compositions florales qui sublimeront votre jour spécial",
-    longDescription:
-      "Nous créons des décorations florales sur mesure pour votre mariage, en harmonie avec votre thème et vos couleurs. De l'autel aux centres de table, en passant par le bouquet de la mariée, nous nous occupons de tous les aspects floraux de votre événement.",
-    category: "Événements",
-    price: "À partir de 500€",
-    slug: "/services/mariage",
-    popular: true,
-  },
-  {
-    id: 2,
-    name: "Événements d'Entreprise",
-    image: "/placeholder.svg?height=400&width=600",
-    icon: Gift,
-    description: "Décorations florales pour vos événements professionnels",
-    longDescription:
-      "Apportez une touche d'élégance à vos événements d'entreprise avec nos compositions florales. Idéal pour les lancements de produits, conférences, galas ou séminaires, nos arrangements floraux créent une atmosphère professionnelle et accueillante.",
-    category: "Événements",
-    price: "À partir de 300€",
-    slug: "/services/entreprise",
-    popular: false,
-  },
-  {
-    id: 3,
-    name: "Abonnements Floraux",
-    image: "/placeholder.svg?height=400&width=600",
-    icon: Flower,
-    description: "Recevez régulièrement des fleurs fraîches à votre domicile ou bureau",
-    longDescription:
-      "Nos abonnements floraux vous permettent de recevoir des compositions fraîches et saisonnières à la fréquence de votre choix. Une façon simple d'apporter de la vie et des couleurs à votre intérieur ou votre espace de travail tout au long de l'année.",
-    category: "Abonnements",
-    price: "À partir de 45€/mois",
-    slug: "/services/abonnement",
-    popular: true,
-  },
-  {
-    id: 4,
-    name: "Décoration d'Anniversaire",
-    image: "/placeholder.svg?height=400&width=600",
-    icon: Gift,
-    description: "Créez un événement mémorable avec nos décorations florales festives",
-    longDescription:
-      "Que vous célébriez un anniversaire, une fête d'enfants ou une réunion de famille, nos décorations florales apporteront joie et couleur à votre événement. Nous adaptons nos créations à votre thème et à vos préférences.",
-    category: "Événements",
-    price: "À partir de 150€",
-    slug: "/services/anniversaire",
-    popular: false,
-  },
-  {
-    id: 5,
-    name: "Décoration de Réception",
-    image: "/placeholder.svg?height=400&width=600",
-    icon: Users,
-    description: "Sublimez vos réceptions avec des arrangements floraux élégants",
-    longDescription:
-      "Pour vos dîners, cocktails ou réceptions, nos compositions florales créent une ambiance raffinée et chaleureuse. Nous concevons des arrangements qui s'harmonisent parfaitement avec votre décor et votre thème.",
-    category: "Événements",
-    price: "À partir de 200€",
-    slug: "/services/reception",
-    popular: false,
-  },
-  {
-    id: 6,
-    name: "Ateliers Floraux",
-    image: "/placeholder.svg?height=400&width=600",
-    icon: Flower,
-    description: "Apprenez l'art floral avec nos ateliers interactifs",
-    longDescription:
-      "Découvrez les secrets de l'art floral lors de nos ateliers interactifs. Idéal pour les particuliers, les équipes d'entreprise ou les événements spéciaux, nos ateliers vous permettent d'apprendre à créer vos propres compositions florales.",
-    category: "Ateliers",
-    price: "À partir de 75€/personne",
-    slug: "/services/atelier",
-    popular: true,
-  },
-]
-
-// Sample testimonials
-const testimonials = [
-  {
-    id: 1,
-    name: "Sophie et Thomas",
-    image: "/placeholder.svg?height=100&width=100",
-    text: "ChezFlora a décoré notre mariage et le résultat était au-delà de nos espérances. Merci pour votre créativité et votre professionnalisme !",
-    service: "Décoration de Mariage",
-    rating: 5,
-  },
-  {
-    id: 2,
-    name: "Entreprise XYZ",
-    image: "/placeholder.svg?height=100&width=100",
-    text: "Nous faisons appel à ChezFlora pour tous nos événements d'entreprise. Leurs compositions sont toujours élégantes et parfaitement adaptées à notre image de marque.",
-    service: "Événements d'Entreprise",
-    rating: 5,
-  },
-  {
-    id: 3,
-    name: "Marie L.",
-    image: "/placeholder.svg?height=100&width=100",
-    text: "Je suis abonnée aux livraisons mensuelles depuis 6 mois et chaque bouquet est une nouvelle surprise. Fraîcheur et originalité garanties.",
-    service: "Abonnements Floraux",
-    rating: 4,
-  },
-]
+// Mapping des icônes par catégorie
+const categoryIcons: Record<string, React.ElementType> = {
+  Mariage: Calendar,
+  Entreprise: Building,
+  "Espaces commerciaux": Gift,
+  Jardins: Flower,
+}
 
 export default function ServicesPage() {
+  const [services, setServices] = useState<Service[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [featuredService, setFeaturedService] = useState<Service | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("all")
+  const router = useRouter()
+
+  
+  useEffect(() => {
+    const fetchServicesAndCategories = async () => {
+      try {
+        setLoading(true)
+
+        // Récupérer les catégories de services
+        try {
+          const categoriesData = await API.services.getServiceCategories()
+          if (categoriesData && categoriesData.length > 0) {
+            setCategories(categoriesData)
+          } else {
+            console.log("Aucune catégorie trouvée")
+            setCategories([])
+          }
+        } catch (categoryError) {
+          console.error("Erreur lors de la récupération des catégories:", categoryError)
+          setCategories([])
+        }
+
+        // Récupérer tous les services
+        const data = await API.services.getAllServices()
+
+        // Vérifier et convertir `images` en tableau si c'est une chaîne JSON
+        const parsedData = data.map((service: Service) => ({
+          ...service,
+          images: typeof service.images === "string" ? JSON.parse(service.images) : service.images,
+        }))
+
+        setServices(parsedData)
+
+        // Trouver un service mis en avant aléatoire
+        const featuredServices = parsedData.filter((service) => service.mis_en_avant)
+        if (featuredServices.length > 0) {
+          const randomIndex = Math.floor(Math.random() * featuredServices.length)
+          setFeaturedService(featuredServices[randomIndex])
+        }
+
+        setError(null)
+      } catch (err: any) {
+        setError(err.message || "Une erreur est survenue lors du chargement des services")
+        console.error("Erreur lors du chargement des services:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchServicesAndCategories()
+  }, [])
+
+  // Filtrer les services en fonction de l'onglet actif
+  const filteredServices =
+    activeTab === "all" ? services : services.filter((service) => service.categorie === activeTab)
+
+  // Obtenir l'icône pour une catégorie donnée
+  const getCategoryIcon = (category: string) => {
+    return categoryIcons[category] || Gift
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-off-white">
+        <Header />
+        <main className="flex-1 py-16 px-4 md:px-8 lg:px-16">
+          <div className="container mx-auto">
+            <div className="flex justify-center items-center min-h-[50vh]">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-soft-green" />
+                <p className="text-light-brown">Chargement des services...</p>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen flex-col bg-off-white">
+        <Header />
+        <main className="flex-1 py-16 px-4 md:px-8 lg:px-16">
+          <div className="container mx-auto">
+            <Alert variant="destructive" className="max-w-xl mx-auto">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <div className="flex justify-center mt-6">
+              <Button
+                className="bg-soft-green hover:bg-soft-green/90 text-white"
+                onClick={() => window.location.reload()}
+              >
+                Réessayer
+              </Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-off-white">
       <Header />
@@ -158,145 +175,89 @@ export default function ServicesPage() {
 
             <Tabs defaultValue="all" className="mt-12">
               <div className="flex justify-center">
-                <TabsList className="bg-beige/30 border-b border-soft-green/10">
-                  <TabsTrigger value="all" className="text-light-brown">
+                <TabsList className="bg-beige/30 border-b border-soft-green/10 overflow-x-auto max-w-full flex-wrap">
+                  <TabsTrigger value="all" className="text-light-brown" onClick={() => setActiveTab("all")}>
                     Tous les services
                   </TabsTrigger>
-                  <TabsTrigger value="events" className="text-light-brown">
-                    Événements
-                  </TabsTrigger>
-                  <TabsTrigger value="subscriptions" className="text-light-brown">
-                    Abonnements
-                  </TabsTrigger>
-                  <TabsTrigger value="workshops" className="text-light-brown">
-                    Ateliers
-                  </TabsTrigger>
+
+                  {categories.map((category) => (
+                    <TabsTrigger
+                      key={category}
+                      value={category}
+                      className="text-light-brown"
+                      onClick={() => setActiveTab(category)}
+                    >
+                      {category}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </div>
 
-              <TabsContent value="all" className="mt-8">
+              <TabsContent value={activeTab} className="mt-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {services.map((service) => (
-                    <ServiceCard key={service.id} service={service} />
+                  {filteredServices.map((service) => (
+                    <ServiceCard key={service.id_service} service={service} getCategoryIcon={getCategoryIcon} />
                   ))}
                 </div>
-              </TabsContent>
 
-              <TabsContent value="events" className="mt-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {services
-                    .filter((service) => service.category === "Événements")
-                    .map((service) => (
-                      <ServiceCard key={service.id} service={service} />
-                    ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="subscriptions" className="mt-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {services
-                    .filter((service) => service.category === "Abonnements")
-                    .map((service) => (
-                      <ServiceCard key={service.id} service={service} />
-                    ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="workshops" className="mt-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {services
-                    .filter((service) => service.category === "Ateliers")
-                    .map((service) => (
-                      <ServiceCard key={service.id} service={service} />
-                    ))}
-                </div>
+                {filteredServices.length === 0 && (
+                  <div className="text-center py-12 bg-white rounded-lg shadow-md">
+                    <p className="text-light-brown/70">Aucun service disponible dans cette catégorie.</p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
         </section>
 
         {/* Featured Service */}
-        <section className="py-16 px-4 md:px-8 lg:px-16 bg-off-white">
-          <div className="container mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div className="relative h-[400px] rounded-lg overflow-hidden">
-                <Image
-                  src="/placeholder.svg?height=400&width=600"
-                  alt="Décoration de mariage"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div>
-                <span className="inline-block bg-powder-pink px-3 py-1 rounded-full text-sm text-light-brown mb-4">
-                  Service à la une
-                </span>
-                <h2 className="font-script text-3xl md:text-4xl text-light-brown mb-4">Décoration de Mariage</h2>
-                <p className="text-light-brown/80 mb-6">
-                  Votre mariage est un jour unique qui mérite une décoration florale exceptionnelle. Nos fleuristes
-                  experts travaillent en étroite collaboration avec vous pour créer des arrangements floraux qui
-                  reflètent votre style et votre personnalité.
-                </p>
-                <p className="text-light-brown/80 mb-6">
-                  Du bouquet de la mariée aux centres de table, en passant par la décoration de la cérémonie et de la
-                  réception, nous nous occupons de tous les aspects floraux de votre grand jour pour créer une
-                  atmosphère magique et inoubliable.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button className="bg-soft-green hover:bg-soft-green/90 text-white">Découvrir ce service</Button>
-                  <Button variant="outline" className="border-soft-green text-soft-green hover:bg-soft-green/10">
-                    Demander un devis
-                  </Button>
+        {featuredService && (
+          <section className="py-16 px-4 md:px-8 lg:px-16 bg-off-white">
+            <div className="container mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div className="relative h-[400px] rounded-lg overflow-hidden">
+                  {featuredService.images && featuredService.images.length > 0 && (
+                    <Image
+                      src={
+                        Array.isArray(featuredService.images)
+                          ? featuredService.images[0]
+                          : "/placeholder.svg?height=400&width=600"
+                      }
+                      alt={featuredService.nom}
+                      fill
+                      className="object-cover"
+                    />
+                  )}
+                </div>
+                <div>
+                  <span className="inline-block bg-powder-pink px-3 py-1 rounded-full text-sm text-light-brown mb-4">
+                    Service à la une
+                  </span>
+                  <h2 className="font-script text-3xl md:text-4xl text-light-brown mb-4">{featuredService.nom}</h2>
+                  <p className="text-light-brown/80 mb-6">{featuredService.description}</p>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button className="bg-soft-green hover:bg-soft-green/90 text-white">
+                      <Link href={`/services/${featuredService.id_service}`}>Découvrir ce service</Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-soft-green text-soft-green hover:bg-soft-green/10"
+                      onClick={() => {
+                        if (featuredService.tarification === "Sur devis") {
+                          router.push(`/services/reservation?serviceId=${featuredService.id_service}`)
+                        } else {
+                          router.push(`/services/${featuredService.id_service}`)
+                        }
+                      }}
+                    >
+                      {featuredService.tarification === "Sur devis" ? "Demander un devis" : "Réserver maintenant"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="py-16 px-4 md:px-8 lg:px-16 bg-white bg-[url('/floral-pattern-light.svg')] bg-opacity-5">
-          <div className="container mx-auto">
-            <h2 className="font-script text-3xl md:text-4xl text-center text-light-brown mb-12">
-              Ce que disent nos clients
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {testimonials.map((testimonial) => (
-                <Card
-                  key={testimonial.id}
-                  className="bg-white border-none shadow-md hover:shadow-lg transition-shadow duration-300"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex flex-col items-center text-center">
-                      <div className="relative h-20 w-20 rounded-full overflow-hidden mb-4">
-                        <Image
-                          src={testimonial.image || "/placeholder.svg"}
-                          alt={testimonial.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-
-                      <h3 className="font-semibold text-lg text-light-brown mb-1">{testimonial.name}</h3>
-                      <p className="text-soft-green text-sm mb-3">{testimonial.service}</p>
-
-                      <div className="flex mb-3">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${i < testimonial.rating ? "text-amber-400 fill-amber-400" : "text-gray-300"}`}
-                          />
-                        ))}
-                      </div>
-
-                      <p className="text-light-brown/80 italic">"{testimonial.text}"</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* CTA Section */}
         <section className="py-16 px-4 md:px-8 lg:px-16 bg-soft-green/10">
@@ -325,25 +286,32 @@ export default function ServicesPage() {
   )
 }
 
-function ServiceCard({ service }: { service: any }) {
-  const IconComponent = service.icon
+function ServiceCard({
+  service,
+  getCategoryIcon,
+}: { service: Service; getCategoryIcon: (category: string) => React.ElementType }) {
+  // Déterminer l'icône en fonction de la catégorie
+  const IconComponent = getCategoryIcon(service.categorie)
+
+  // Utiliser la première image comme image principale
+  const mainImage = Array.isArray(service.images) && service.images.length > 0 ? service.images[0] : "/placeholder.svg"
 
   return (
     <Card className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300 h-full group">
       <div className="relative h-48 w-full overflow-hidden">
         <Image
-          src={service.image || "/placeholder.svg"}
-          alt={service.name}
+          src={mainImage || "/placeholder.svg"}
+          alt={service.nom}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        {service.popular && (
+        {service.mis_en_avant && (
           <div className="absolute top-2 right-2 bg-soft-green px-2 py-1 rounded-full text-xs text-white">
             Populaire
           </div>
         )}
         <div className="absolute top-2 left-2 bg-powder-pink px-2 py-1 rounded-full text-xs text-light-brown">
-          {service.category}
+          {service.categorie}
         </div>
       </div>
       <CardContent className="p-6">
@@ -351,13 +319,15 @@ function ServiceCard({ service }: { service: any }) {
           <div className="bg-soft-green/10 p-2 rounded-full mr-3">
             <IconComponent className="h-5 w-5 text-soft-green" />
           </div>
-          <h3 className="font-script text-xl text-light-brown">{service.name}</h3>
+          <h3 className="font-script text-xl text-light-brown">{service.nom}</h3>
         </div>
-        <p className="text-light-brown/80 mb-4">{service.description}</p>
+        <p className="text-light-brown/80 mb-4 line-clamp-2">{service.description}</p>
         <div className="flex justify-between items-center">
-          <span className="text-soft-green font-medium">{service.price}</span>
+          <span className="text-soft-green font-medium">
+            {typeof service.tarification === "number" ? `${service.tarification} €` : service.tarification}
+          </span>
           <Button className="bg-beige hover:bg-beige/90 text-light-brown">
-            <Link href={service.slug}>Voir détails</Link>
+            <Link href={`/services/${service.id_service}`}>Voir détails</Link>
           </Button>
         </div>
       </CardContent>

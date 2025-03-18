@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,18 +14,89 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Phone, Mail, MapPin, Clock, AlertCircle, CheckCircle2 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import API from "@/services/apis"
+
+// Type pour les informations de contact
+interface ContactInfo {
+  address: { value: string; icon: string }
+  phone: { value: string; icon: string }
+  email: { value: string; icon: string }
+  hours: { value: string; icon: string }
+}
+
+// Type pour les sujets de contact
+interface ContactSubject {
+  id: number
+  value: string
+  label: string
+}
+
+// Type pour les FAQ
+interface FAQ {
+  id: number
+  question: string
+  answer: string
+  category: string
+}
+
+// Type pour le formulaire de contact
+interface FormData {
+  name: string
+  email: string
+  phone: string
+  subject: string
+  message: string
+}
+
+// Fonction pour obtenir l'icône correspondante
+const getIcon = (iconName: string) => {
+  const icons: { [key: string]: React.ReactNode } = {
+    MapPin: <MapPin className="h-6 w-6 text-soft-green" />,
+    Phone: <Phone className="h-6 w-6 text-soft-green" />,
+    Mail: <Mail className="h-6 w-6 text-soft-green" />,
+    Clock: <Clock className="h-6 w-6 text-soft-green" />,
+  }
+  return icons[iconName] || <MapPin className="h-6 w-6 text-soft-green" />
+}
 
 export default function ContactPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
     phone: "",
     subject: "",
     message: "",
   })
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null)
+  const [subjects, setSubjects] = useState<ContactSubject[]>([])
+  const [faqs, setFaqs] = useState<FAQ[]>([])
+
+  // Charger les données au chargement de la page
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Récupérer les informations de contact
+        const infoResponse = await API.contact.getContactInfo()
+        setContactInfo(infoResponse)
+
+        // Récupérer les sujets de contact
+        const subjectsResponse = await API.contact.getContactSubjects()
+        setSubjects(subjectsResponse)
+
+        // Récupérer les FAQ
+        const faqsResponse = await API.contact.getFaqs()
+        setFaqs(faqsResponse)
+      } catch (err) {
+        console.error("Erreur lors du chargement des données:", err)
+        setError("Une erreur est survenue lors du chargement des données. Veuillez réessayer.")
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -40,7 +111,7 @@ export default function ContactPage() {
     e.preventDefault()
 
     // Basic validation
-    if (!formData.name || !formData.email || !formData.message) {
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
       setError("Veuillez remplir tous les champs obligatoires.")
       return
     }
@@ -49,8 +120,8 @@ export default function ContactPage() {
     setError(null)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Envoyer le message à l'API
+      await API.contact.sendContactMessage(formData)
 
       // Success scenario
       setSuccess(true)
@@ -62,10 +133,15 @@ export default function ContactPage() {
         message: "",
       })
     } catch (err) {
-      setError("Une erreur est survenue. Veuillez réessayer.")
+      setError("Une erreur est survenue lors de l'envoi du message. Veuillez réessayer.")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Fonction pour formater le texte avec des sauts de ligne
+  const formatText = (text: string) => {
+    return text.split("\n").map((line, index) => <p key={index}>{line}</p>)
   }
 
   return (
@@ -173,11 +249,11 @@ export default function ContactPage() {
                               <SelectValue placeholder="Sélectionnez un sujet" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="information">Demande d'information</SelectItem>
-                              <SelectItem value="commande">Question sur une commande</SelectItem>
-                              <SelectItem value="service">Réservation de service</SelectItem>
-                              <SelectItem value="reclamation">Réclamation</SelectItem>
-                              <SelectItem value="autre">Autre</SelectItem>
+                              {subjects.map((subject) => (
+                                <SelectItem key={subject.id} value={subject.value}>
+                                  {subject.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -214,48 +290,41 @@ export default function ContactPage() {
                 <div>
                   <h2 className="font-script text-2xl text-light-brown mb-6">Nos coordonnées</h2>
                   <div className="space-y-4">
-                    <div className="flex items-start space-x-4">
-                      <div className="bg-soft-green/10 p-3 rounded-full">
-                        <MapPin className="h-6 w-6 text-soft-green" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-light-brown">Adresse</h3>
-                        <p className="text-light-brown/80">123 Rue des Fleurs</p>
-                        <p className="text-light-brown/80">75001 Paris, France</p>
-                      </div>
-                    </div>
+                    {contactInfo && (
+                      <>
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-soft-green/10 p-3 rounded-full">{getIcon(contactInfo.address.icon)}</div>
+                          <div>
+                            <h3 className="font-medium text-light-brown">Adresse</h3>
+                            <div className="text-light-brown/80">{formatText(contactInfo.address.value)}</div>
+                          </div>
+                        </div>
 
-                    <div className="flex items-start space-x-4">
-                      <div className="bg-soft-green/10 p-3 rounded-full">
-                        <Phone className="h-6 w-6 text-soft-green" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-light-brown">Téléphone</h3>
-                        <p className="text-light-brown/80">01 23 45 67 89</p>
-                      </div>
-                    </div>
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-soft-green/10 p-3 rounded-full">{getIcon(contactInfo.phone.icon)}</div>
+                          <div>
+                            <h3 className="font-medium text-light-brown">Téléphone</h3>
+                            <div className="text-light-brown/80">{formatText(contactInfo.phone.value)}</div>
+                          </div>
+                        </div>
 
-                    <div className="flex items-start space-x-4">
-                      <div className="bg-soft-green/10 p-3 rounded-full">
-                        <Mail className="h-6 w-6 text-soft-green" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-light-brown">Email</h3>
-                        <p className="text-light-brown/80">contact@chezflora.fr</p>
-                      </div>
-                    </div>
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-soft-green/10 p-3 rounded-full">{getIcon(contactInfo.email.icon)}</div>
+                          <div>
+                            <h3 className="font-medium text-light-brown">Email</h3>
+                            <div className="text-light-brown/80">{formatText(contactInfo.email.value)}</div>
+                          </div>
+                        </div>
 
-                    <div className="flex items-start space-x-4">
-                      <div className="bg-soft-green/10 p-3 rounded-full">
-                        <Clock className="h-6 w-6 text-soft-green" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-light-brown">Horaires d'ouverture</h3>
-                        <p className="text-light-brown/80">Lundi - Vendredi: 9h00 - 19h00</p>
-                        <p className="text-light-brown/80">Samedi: 10h00 - 18h00</p>
-                        <p className="text-light-brown/80">Dimanche: Fermé</p>
-                      </div>
-                    </div>
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-soft-green/10 p-3 rounded-full">{getIcon(contactInfo.hours.icon)}</div>
+                          <div>
+                            <h3 className="font-medium text-light-brown">Horaires d'ouverture</h3>
+                            <div className="text-light-brown/80">{formatText(contactInfo.hours.value)}</div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -286,49 +355,14 @@ export default function ContactPage() {
             <h2 className="font-script text-3xl text-center text-light-brown mb-12">Questions fréquentes</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              <Card className="border-none shadow-md">
-                <CardContent className="p-6">
-                  <h3 className="font-medium text-lg text-light-brown mb-2">Quels sont vos délais de livraison ?</h3>
-                  <p className="text-light-brown/80">
-                    Nous livrons à Paris et sa banlieue le jour même pour toute commande passée avant 14h. Pour les
-                    autres régions, le délai est généralement de 24 à 48h.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-md">
-                <CardContent className="p-6">
-                  <h3 className="font-medium text-lg text-light-brown mb-2">Comment puis-je suivre ma commande ?</h3>
-                  <p className="text-light-brown/80">
-                    Vous recevrez un email de confirmation avec un numéro de suivi dès que votre commande sera expédiée.
-                    Vous pouvez également suivre votre commande dans votre espace client.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-md">
-                <CardContent className="p-6">
-                  <h3 className="font-medium text-lg text-light-brown mb-2">
-                    Puis-je modifier ou annuler ma commande ?
-                  </h3>
-                  <p className="text-light-brown/80">
-                    Vous pouvez modifier ou annuler votre commande jusqu'à 24h avant la date de livraison prévue.
-                    Contactez-nous par téléphone ou par email pour toute modification.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-md">
-                <CardContent className="p-6">
-                  <h3 className="font-medium text-lg text-light-brown mb-2">
-                    Proposez-vous des services pour les entreprises ?
-                  </h3>
-                  <p className="text-light-brown/80">
-                    Oui, nous proposons des services d'abonnement floral et de décoration pour les entreprises.
-                    Contactez-nous pour obtenir un devis personnalisé.
-                  </p>
-                </CardContent>
-              </Card>
+              {faqs.map((faq) => (
+                <Card key={faq.id} className="border-none shadow-md">
+                  <CardContent className="p-6">
+                    <h3 className="font-medium text-lg text-light-brown mb-2">{faq.question}</h3>
+                    <p className="text-light-brown/80">{faq.answer}</p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             <div className="text-center mt-12">

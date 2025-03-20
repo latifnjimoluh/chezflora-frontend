@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Lock, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react"
 import { resetPassword } from "@/services/api";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -25,13 +26,17 @@ export default function ResetPasswordPage() {
     confirmPassword: "",
   })
 
-  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useLocalStorage<string | null>("resetToken", null);
+
+
 
   const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
-      setIsClient(true);
-    }, []);
+      if (!resetToken) {
+        setError("Token invalide ou expiré. Veuillez recommencer.");
+      }
+    }, [resetToken]);
 
     useEffect(() => {
       if (isClient) {
@@ -83,39 +88,24 @@ export default function ResetPasswordPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // Final validation before submission
-    const isPasswordValid = validatePassword(formData.password)
-    const doPasswordsMatch = validatePasswordMatch(formData.password, formData.confirmPassword)
-
-    setValidation({
-      password: isPasswordValid,
-      confirmPassword: true,
-      passwordMatch: doPasswordsMatch,
-    })
-
-    if (!isPasswordValid || !doPasswordsMatch) {
-      setError("Veuillez corriger les erreurs dans le formulaire.")
-      return
-    }
-
+    e.preventDefault();
+  
     if (!resetToken) {
       setError("Token invalide ou expiré.");
       return;
     }
-
+  
     if (formData.password !== formData.confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
       return;
     }
-
+  
     setIsLoading(true);
     setError(null);
-
+  
     try {
       await resetPassword(resetToken, formData.password);
-      localStorage.removeItem("resetToken"); // Supprimer le token après utilisation
+      setResetToken(null); // ✅ Supprime le token après la réinitialisation
       setSuccess(true);
       setTimeout(() => {
         router.push("/login");
@@ -125,7 +115,8 @@ export default function ResetPasswordPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
+  
   
   console.log("LocalStorage Data:", localStorage);
 

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, Lock, AlertCircle } from "lucide-react";
 import { loginUser } from "@/services/api";
+import { useLocalStorage } from "@/hooks/useLocalStorage"; 
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,14 +26,18 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  
+const [token, setToken] = useLocalStorage<string | null>("token", null);
+const [role, setRole] = useLocalStorage<string | null>("role", null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-  
+
     try {
       const data = await loginUser(formData.identifier, formData.password);
-  
+
       if (data.status === "verification") {
         setError("Votre compte n'est pas encore activé. Veuillez vérifier votre email.");
         if (typeof window !== "undefined") {
@@ -43,11 +48,11 @@ export default function LoginPage() {
         }, 2000);
         return;
       }
-  
-      if (typeof window !== "undefined") {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
-      }
+
+      // ✅ Stockage avec `useLocalStorage`
+      setToken(data.token);
+      setRole(data.role);
+
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Identifiants incorrects.");

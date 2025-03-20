@@ -29,21 +29,25 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
+  
     try {
       const data = await loginUser(formData.identifier, formData.password);
-      
+  
       if (data.status === "verification") {
         setError("Votre compte n'est pas encore activé. Veuillez vérifier votre email.");
-        localStorage.setItem("email", data.email);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("email", data.email);
+        }
         setTimeout(() => {
-          router.replace("/verify-otp")
-        }, 2000)
+          router.replace("/verify-otp");
+        }, 2000);
         return;
       }
-      
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("role", data.role);
+  
+      if (typeof window !== "undefined") {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.role);
+      }
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Identifiants incorrects.");
@@ -51,6 +55,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+  
   
   console.log("LocalStorage Data:", localStorage);
 

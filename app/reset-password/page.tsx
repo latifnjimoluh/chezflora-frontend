@@ -27,15 +27,24 @@ export default function ResetPasswordPage() {
 
   const [resetToken, setResetToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem("resetToken");
-    if (token) {
-      setResetToken(token);
-    } else {
-      setError("Token invalide ou expiré. Veuillez recommencer.");
-    }
-    console.log("LocalStorage Data:", localStorage);
-  }, []);
+  const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+      setIsClient(true);
+    }, []);
+
+    useEffect(() => {
+      if (isClient) {
+        const token = localStorage.getItem("resetToken");
+        if (token) {
+          setResetToken(token);
+        } else {
+          setError("Token invalide ou expiré. Veuillez recommencer.");
+        }
+      }
+    }, [isClient]);
+
+  
 
   // Form validation states
   const [validation, setValidation] = useState({

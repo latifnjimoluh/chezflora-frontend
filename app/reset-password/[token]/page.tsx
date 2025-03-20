@@ -9,7 +9,7 @@ export default function ResetPasswordRedirect() {
   const token = params.token as string; // Récupère le token depuis l'URL
 
   useEffect(() => {
-    if (token) {
+    if (typeof window !== "undefined" && token) {
       localStorage.setItem("resetToken", token); // Stocke le token dans le localStorage
       router.replace("/reset-password"); // Redirige vers la page de réinitialisation
     }

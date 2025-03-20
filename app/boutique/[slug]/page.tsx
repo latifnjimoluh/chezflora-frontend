@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Heart, Minus, Plus, Share2, ShoppingBag, Truck, CheckCircle2 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-// Modifier l'import pour ajouter la fonction addToCart
 import { getProductById, checkProductStock, getAllProducts, addToCart } from "@/services/api"
 import { toast } from "@/components/ui/use-toast"
+import { formatPrice } from "@/utils/format-utils"
+import API from "@/services/apis"
 
 export default function ProductDetailPage({ params }: { params: { slug: string } }) {
   const router = useRouter()
@@ -24,8 +25,27 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [error, setError] = useState<string | null>(null)
   const [stockInfo, setStockInfo] = useState<{ stock: number; message: string } | null>(null)
   const [showAddedToast, setShowAddedToast] = useState(false)
+  const [siteContent, setSiteContent] = useState({
+    delivery_free_text: "Livraison gratuite à partir de 50 000 XAF d'achat",
+    delivery_same_day_text: "Livraison le jour même pour toute commande avant 14h",
+  })
 
   useEffect(() => {
+    const fetchSiteContent = async () => {
+      try {
+        const contents = await API.siteContent.getAllContents()
+        if (contents) {
+          setSiteContent((prev) => ({
+            ...prev,
+            delivery_free_text: contents.delivery_free_text || prev.delivery_free_text,
+            delivery_same_day_text: contents.delivery_same_day_text || prev.delivery_same_day_text,
+          }))
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des contenus du site:", error)
+      }
+    }
+
     const fetchProductData = async () => {
       try {
         setLoading(true)
@@ -50,9 +70,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       }
     }
 
-    if (params.slug) {
-      fetchProductData()
-    }
+    fetchSiteContent()
+    fetchProductData()
   }, [params.slug])
 
   const decreaseQuantity = () => {
@@ -87,11 +106,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         variant: "destructive",
       })
     }
-  }
-
-  // Fonction pour formater le prix
-  const formatPrice = (price: number) => {
-    return `${price.toFixed(2).replace(".", ",")} €`
   }
 
   // Fonction pour extraire les images du produit
@@ -276,8 +290,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 <div className="flex items-start space-x-2 text-light-brown/70">
                   <Truck className="h-5 w-5 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm">Livraison gratuite à partir de 50€ d'achat</p>
-                    <p className="text-sm">Livraison le jour même pour toute commande avant 14h</p>
+                    <p className="text-sm">{siteContent.delivery_free_text}</p>
+                    <p className="text-sm">{siteContent.delivery_same_day_text}</p>
                   </div>
                 </div>
               </div>

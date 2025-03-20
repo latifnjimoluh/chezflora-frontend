@@ -2,32 +2,32 @@
 
 import type React from "react"
 
-
-import { useAuth } from "@/hooks/useAuth";
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { User, Phone, Mail, Lock, AlertCircle, CheckCircle2, Camera, X, Eye, EyeOff } from 'lucide-react'
+import { User, Phone, Mail, Lock, AlertCircle, CheckCircle2, Camera, X, Eye, EyeOff } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { 
-  getUserProfile, 
-  updateUserProfile, 
-  requestEmailChange, 
-  confirmEmailChange, 
-  updatePassword, 
+import {
+  getUserProfile,
+  updateUserProfile,
+  requestEmailChange,
+  confirmEmailChange,
+  updatePassword,
   updateProfileImage,
   requestAccountDeletion,
-  confirmAccountDeletion, 
+  confirmAccountDeletion,
 } from "@/services/api"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function ProfilePage() {
-  useAuth();
+  // Utiliser le hook d'authentification pour protéger la page
+  useAuth("/profile")
+
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -35,7 +35,7 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [showOtpField, setShowOtpField] = useState(false)
   const [otp, setOtp] = useState("")
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -51,14 +51,14 @@ export default function ProfilePage() {
   // États pour la modification du mot de passe
   const [isEditingPassword, setIsEditingPassword] = useState(false)
   const [passwordData, setPasswordData] = useState({
-    current_password: "",
-    new_password: "",
-    confirm_password: ""
+    currentPassword: "",
+    newPassword: "",
+    confirm_password: "",
   })
   const [showPassword, setShowPassword] = useState({
     current: false,
     new: false,
-    confirm: false
+    confirm: false,
   })
 
   // État pour la popup de suppression de compte
@@ -70,7 +70,7 @@ export default function ProfilePage() {
   const [validation, setValidation] = useState({
     phone: true,
     email: true,
-    password: true
+    password: true,
   })
 
   // Charger les données du profil au chargement de la page
@@ -78,22 +78,24 @@ export default function ProfilePage() {
     const fetchUserProfile = async () => {
       try {
         setIsLoading(true)
-      const profileData = await getUserProfile()
-      setFormData({
-        first_name: profileData.first_name || "",
-        last_name: profileData.last_name || "",
-        phone: profileData.phone || "",
-        email: profileData.email || "",
-        new_email: "",
-      });
-        setProfileImage(profileData.image || "/placeholder.svg?height=200&width=200"); // Image par défaut si aucune image n'est trouvée
+        const profileData = await getUserProfile()
+        setFormData({
+          first_name: profileData.first_name || "",
+          last_name: profileData.last_name || "",
+          phone: profileData.phone || "",
+          email: profileData.email || "",
+          new_email: "",
+        })
+        setProfileImage(profileData.image || "/placeholder.svg?height=200&width=200")
+        setIsLoading(false)
       } catch (err: any) {
-        setError(err.message || "Impossible de récupérer les informations utilisateur.");
+        setError(err.message || "Impossible de récupérer les informations utilisateur.")
+        setIsLoading(false)
       }
-    };
+    }
 
-    fetchUserProfile();
-  }, []);
+    fetchUserProfile()
+  }, [])
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -106,7 +108,7 @@ export default function ProfilePage() {
   }
 
   const validatePassword = (password: string) => {
-    return password.length >= 4
+    return password.length >= 8
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,10 +127,10 @@ export default function ProfilePage() {
     const { name, value } = e.target
     setPasswordData((prev) => ({ ...prev, [name]: value }))
 
-    if (name === "new_password" || name === "confirm_password") {
-      setValidation((prev) => ({ 
-        ...prev, 
-        password: validatePassword(value) || value === "" 
+    if (name === "newPassword" || name === "confirm_password") {
+      setValidation((prev) => ({
+        ...prev,
+        password: validatePassword(value) || value === "",
       }))
     }
   }
@@ -187,7 +189,7 @@ export default function ProfilePage() {
         setIsLoading(false)
       }
     } else {
-      setFormData(prev => ({ ...prev, new_email: prev.email }))
+      setFormData((prev) => ({ ...prev, new_email: prev.email }))
       setIsEditingEmail(true)
       setEmailConfirmationSent(false)
       setShowOtpField(false)
@@ -202,8 +204,8 @@ export default function ProfilePage() {
 
     try {
       setIsLoading(true)
-      await confirmEmailChange(formData.new_email, otp)
-      setFormData(prev => ({ ...prev, email: prev.new_email }))
+      await confirmEmailChange(otp)
+      setFormData((prev) => ({ ...prev, email: prev.new_email }))
       setIsEditingEmail(false)
       setEmailConfirmationSent(false)
       setShowOtpField(false)
@@ -220,34 +222,37 @@ export default function ProfilePage() {
 
   const handleSavePassword = async () => {
     // Validation des mots de passe
-    if (!passwordData.current_password) {
+    if (!passwordData.currentPassword) {
       setError("Veuillez entrer votre mot de passe actuel")
       return
     }
 
-    if (!passwordData.new_password) {
+    if (!passwordData.newPassword) {
       setError("Veuillez entrer un nouveau mot de passe")
       return
     }
 
-    if (passwordData.new_password !== passwordData.confirm_password) {
+    if (passwordData.newPassword !== passwordData.confirm_password) {
       setError("Les mots de passe ne correspondent pas")
       return
     }
 
-    if (!validatePassword(passwordData.new_password)) {
+    if (!validatePassword(passwordData.newPassword)) {
       setError("Le mot de passe doit contenir au moins 8 caractères")
       return
     }
 
     try {
       setIsLoading(true)
-      await updatePassword(passwordData.current_password, passwordData.new_password)
+      await updatePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      })
       setIsEditingPassword(false)
       setPasswordData({
-        current_password: "",
-        new_password: "",
-        confirm_password: ""
+        currentPassword: "",
+        newPassword: "",
+        confirm_password: "",
       })
       setSuccess("Mot de passe mis à jour avec succès.")
       setError(null)
@@ -313,15 +318,15 @@ export default function ProfilePage() {
     try {
       setIsLoading(true)
       setError(null)
-      
+
       await updateUserProfile({
         first_name: formData.first_name,
         last_name: formData.last_name,
-        phone: formData.phone
+        phone: formData.phone,
       })
-      
+
       setSuccess("Profil mis à jour avec succès.")
-      
+
       // Reset success message after a delay
       setTimeout(() => {
         setSuccess(null)
@@ -371,9 +376,7 @@ export default function ProfilePage() {
           {success && (
             <Alert className="mb-6 bg-soft-green/10 border-soft-green/30">
               <CheckCircle2 className="h-4 w-4 text-soft-green" />
-              <AlertDescription className="text-soft-green">
-                {success}
-              </AlertDescription>
+              <AlertDescription className="text-soft-green">{success}</AlertDescription>
             </Alert>
           )}
 
@@ -484,9 +487,9 @@ export default function ProfilePage() {
                     Adresse email
                   </Label>
                   {!isEditingEmail ? (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       size="sm"
                       className="border-soft-green text-soft-green hover:bg-soft-green/10"
                       onClick={handleEditEmail}
@@ -494,9 +497,9 @@ export default function ProfilePage() {
                       Modifier
                     </Button>
                   ) : (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       size="sm"
                       className="border-soft-green text-soft-green hover:bg-soft-green/10"
                       onClick={handleEditEmail}
@@ -506,7 +509,7 @@ export default function ProfilePage() {
                     </Button>
                   )}
                 </div>
-                
+
                 {!isEditingEmail ? (
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-light-brown/60" />
@@ -536,7 +539,7 @@ export default function ProfilePage() {
                     />
                   </div>
                 )}
-                
+
                 {!validation.email && (
                   <p className="text-red-500 text-xs mt-1">Veuillez entrer une adresse email valide</p>
                 )}
@@ -563,8 +566,8 @@ export default function ProfilePage() {
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                     />
-                    <Button 
-                      type="button" 
+                    <Button
+                      type="button"
                       className="bg-soft-green hover:bg-soft-green/90 text-white"
                       onClick={handleVerifyOtp}
                       disabled={isLoading}
@@ -608,16 +611,16 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   {!isEditingPassword ? (
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="border-soft-green text-soft-green hover:bg-soft-green/10"
                       onClick={() => setIsEditingPassword(true)}
                     >
                       Modifier
                     </Button>
                   ) : (
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="border-red-500 text-red-500 hover:bg-red-500/10"
                       onClick={() => setIsEditingPassword(false)}
                     >
@@ -627,28 +630,26 @@ export default function ProfilePage() {
                 </div>
 
                 {isEditingPassword && (
-
-                  
                   <div className="space-y-4 p-4 bg-beige/10 rounded-md">
                     <div className="space-y-2">
-                      <Label htmlFor="current_password" className="text-light-brown">
+                      <Label htmlFor="currentPassword" className="text-light-brown">
                         Mot de passe actuel
                       </Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-light-brown/60" />
                         <Input
-                          id="current_password"
-                          name="current_password"
+                          id="currentPassword"
+                          name="currentPassword"
                           type={showPassword.current ? "text" : "password"}
                           className="pl-10 pr-10 bg-beige/30 border-soft-green/20 focus:border-soft-green"
-                          value={passwordData.current_password}
+                          value={passwordData.currentPassword}
                           onChange={handlePasswordChange}
                           required
                         />
                         <button
                           type="button"
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-light-brown/60"
-                          onClick={() => setShowPassword(prev => ({ ...prev, current: !prev.current }))}
+                          onClick={() => setShowPassword((prev) => ({ ...prev, current: !prev.current }))}
                         >
                           {showPassword.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -656,31 +657,31 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="new_password" className="text-light-brown">
+                      <Label htmlFor="newPassword" className="text-light-brown">
                         Nouveau mot de passe
                       </Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-light-brown/60" />
                         <Input
-                          id="new_password"
-                          name="new_password"
+                          id="newPassword"
+                          name="newPassword"
                           type={showPassword.new ? "text" : "password"}
                           className={`pl-10 pr-10 bg-beige/30 border-soft-green/20 focus:border-soft-green ${
-                            !validation.password && passwordData.new_password ? "border-red-500" : ""
+                            !validation.password && passwordData.newPassword ? "border-red-500" : ""
                           }`}
-                          value={passwordData.new_password}
+                          value={passwordData.newPassword}
                           onChange={handlePasswordChange}
                           required
                         />
                         <button
                           type="button"
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-light-brown/60"
-                          onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))}
+                          onClick={() => setShowPassword((prev) => ({ ...prev, new: !prev.new }))}
                         >
                           {showPassword.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      {!validation.password && passwordData.new_password && (
+                      {!validation.password && passwordData.newPassword && (
                         <p className="text-red-500 text-xs">Le mot de passe doit contenir au moins 8 caractères</p>
                       )}
                     </div>
@@ -696,7 +697,7 @@ export default function ProfilePage() {
                           name="confirm_password"
                           type={showPassword.confirm ? "text" : "password"}
                           className={`pl-10 pr-10 bg-beige/30 border-soft-green/20 focus:border-soft-green ${
-                            passwordData.new_password !== passwordData.confirm_password && passwordData.confirm_password
+                            passwordData.newPassword !== passwordData.confirm_password && passwordData.confirm_password
                               ? "border-red-500"
                               : ""
                           }`}
@@ -707,29 +708,15 @@ export default function ProfilePage() {
                         <button
                           type="button"
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-light-brown/60"
-                          onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))}
+                          onClick={() => setShowPassword((prev) => ({ ...prev, confirm: !prev.confirm }))}
                         >
                           {showPassword.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      {passwordData.new_password !== passwordData.confirm_password && passwordData.confirm_password && (
+                      {passwordData.newPassword !== passwordData.confirm_password && passwordData.confirm_password && (
                         <p className="text-red-500 text-xs">Les mots de passe ne correspondent pas</p>
                       )}
                     </div>
-                    {/* Affichage des erreurs et du succès */}
-                    {error && (
-                      <Alert variant="destructive" className="mb-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {success && (
-                      <Alert className="mb-4 bg-soft-green/10 border-soft-green/30">
-                        <CheckCircle2 className="h-4 w-4 text-soft-green" />
-                        <AlertDescription className="text-soft-green">{success}</AlertDescription>
-                      </Alert>
-                    )}
 
                     <Button
                       type="button"
@@ -760,8 +747,8 @@ export default function ProfilePage() {
                     Supprimez définitivement votre compte et toutes vos données
                   </p>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="border-red-500 text-red-500 hover:bg-red-500/10"
                   onClick={handleDeleteAccount}
                 >
@@ -779,22 +766,20 @@ export default function ProfilePage() {
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-medium text-light-brown">Supprimer votre compte</h3>
-              <button 
-                onClick={() => setShowDeletePopup(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
+              <button onClick={() => setShowDeletePopup(false)} className="text-gray-500 hover:text-gray-700">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             <p className="text-light-brown/80 mb-4">
               Cette action est irréversible. Toutes vos données seront définitivement supprimées.
             </p>
-            
+
             <p className="text-light-brown/80 mb-4">
-              Un code de vérification a été envoyé à votre adresse email. Veuillez le saisir ci-dessous pour confirmer la suppression.
+              Un code de vérification a été envoyé à votre adresse email. Veuillez le saisir ci-dessous pour confirmer
+              la suppression.
             </p>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="delete_otp" className="text-light-brown">
@@ -808,7 +793,7 @@ export default function ProfilePage() {
                   placeholder="Entrez le code reçu par email"
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -834,3 +819,4 @@ export default function ProfilePage() {
     </div>
   )
 }
+

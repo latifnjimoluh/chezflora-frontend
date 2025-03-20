@@ -534,6 +534,36 @@ const API = {
       return await apiService.toggleTestimonialFeatured(id)
     },
   },
+  // Ajouter ces nouvelles sections à votre fichier API existant
+  siteContent: {
+    getAllContents: async () => {
+      try {
+        const response = await apiService.getAllSiteContents()
+        return response
+      } catch (error) {
+        console.error("Erreur lors de la récupération des contenus du site:", error)
+        return {}
+      }
+    },
+
+    getContentByKey: async (key: string) => {
+      try {
+        const response = await apiService.getSiteContentByKey(key)
+        return response
+      } catch (error) {
+        console.error(`Erreur lors de la récupération du contenu "${key}":`, error)
+        return null
+      }
+    },
+
+    updateContent: async (key: string, value: string) => {
+      return await apiService.updateSiteContent(key, value)
+    },
+
+    deleteContent: async (key: string) => {
+      return await apiService.deleteSiteContent(key)
+    },
+  },
 }
 
 // Fonctions individuelles pour la compatibilité avec les imports nommés

@@ -17,9 +17,11 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { getCart, validateCart, placeOrder } from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
+import { formatPrice } from "@/utils/format-utils"
+import { requireAuthentication } from "@/utils/format-utils"
 
 export default function CommandePage() {
-  const router = useRouter() //
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -39,27 +41,19 @@ export default function CommandePage() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const formatPrice = (price: number) => {
-    return `${price.toFixed(2).replace(".", ",")} €`
-  }
-
   useEffect(() => {
+    // Vérifier si l'utilisateur est connecté
+    const isAuthenticated = requireAuthentication(router, "/commandes")
+    if (!isAuthenticated) return
+
     const fetchCart = async () => {
       try {
         setLoading(true)
 
-        // 🔹 Vérifier si l'utilisateur est connecté
-        const token = localStorage.getItem("token")
-        if (!token) {
-          console.error("⚠️ Aucun token trouvé. Redirection vers la connexion...")
-          router.push("/login")
-          return
-        }
+        // Récupérer le panier de l'utilisateur
+        const data = await getCart()
 
-        // 🔹 Récupérer le panier de l'utilisateur
-        const data = await getCart(token)
-
-        // 🔹 Vérifier et stocker les produits
+        // Vérifier et stocker les produits
         if (data && Array.isArray(data.panier)) {
           setCartItems(data.panier)
         } else {
@@ -67,7 +61,7 @@ export default function CommandePage() {
           setCartItems([])
         }
 
-        // 🔹 Stocker l'ID du panier dans le `localStorage`
+        // Stocker l'ID du panier dans le `localStorage`
         if (data?.id_panier) {
           localStorage.setItem("id_panier", data.id_panier)
         }
@@ -166,7 +160,7 @@ export default function CommandePage() {
   }
 
   const subtotal = calculateSubtotal()
-  const deliveryFee = deliveryMethod === "express" ? 9.9 : subtotal >= 50 ? 0 : 5.9
+  const deliveryFee = deliveryMethod === "express" ? 9900 : subtotal >= 50000 ? 0 : 5900
   const total = subtotal + deliveryFee
 
   const getProductImage = (product: any) => {
@@ -330,10 +324,12 @@ export default function CommandePage() {
                               <Label htmlFor="standard" className="font-medium text-light-brown flex items-center">
                                 <Truck className="h-4 w-4 mr-2" />
                                 Livraison standard
-                                {subtotal >= 50 && <span className="ml-2 text-soft-green text-sm">(Gratuite)</span>}
+                                {subtotal >= 50000 && <span className="ml-2 text-soft-green text-sm">(Gratuite)</span>}
                               </Label>
                               <p className="text-sm text-light-brown/70 mt-1">Livraison sous 2-3 jours ouvrés</p>
-                              {subtotal < 50 && <p className="text-sm font-medium text-light-brown mt-1">5,90 €</p>}
+                              {subtotal < 50000 && (
+                                <p className="text-sm font-medium text-light-brown mt-1">5 900 XAF</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-start space-x-3 bg-white p-3 rounded-md border border-soft-green/20">
@@ -346,7 +342,7 @@ export default function CommandePage() {
                               <p className="text-sm text-light-brown/70 mt-1">
                                 Livraison le jour même pour toute commande avant 14h
                               </p>
-                              <p className="text-sm font-medium text-light-brown mt-1">9,90 €</p>
+                              <p className="text-sm font-medium text-light-brown mt-1">9 900 XAF</p>
                             </div>
                           </div>
                         </RadioGroup>
@@ -436,7 +432,7 @@ export default function CommandePage() {
                               <p className="text-sm text-light-brown/70">Quantité: {item.quantite}</p>
                             </div>
                             <p className="font-medium text-light-brown">
-                              {formatPrice(Number.parseFloat(item.prix) * item.quantite)}
+                              {formatPrice(Number(item.prix) * item.quantite)}
                             </p>
                           </div>
                         ))
@@ -446,17 +442,17 @@ export default function CommandePage() {
                     <div className="space-y-3 mb-6 border-t border-soft-green/10 pt-4">
                       <div className="flex justify-between">
                         <span className="text-light-brown/70">Sous-total</span>
-                        <span className="text-light-brown">{subtotal.toFixed(2).replace(".", ",")} €</span>
+                        <span className="text-light-brown">{formatPrice(subtotal)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-light-brown/70">Livraison</span>
                         <span className="text-light-brown">
-                          {deliveryFee === 0 ? "Gratuite" : `${deliveryFee.toFixed(2).replace(".", ",")} €`}
+                          {deliveryFee === 0 ? "Gratuite" : formatPrice(deliveryFee)}
                         </span>
                       </div>
                       <div className="border-t border-soft-green/10 pt-3 flex justify-between font-semibold">
                         <span className="text-light-brown">Total</span>
-                        <span className="text-light-brown">{total.toFixed(2).replace(".", ",")} €</span>
+                        <span className="text-light-brown">{formatPrice(total)}</span>
                       </div>
                     </div>
 
@@ -465,7 +461,7 @@ export default function CommandePage() {
                         <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0 text-soft-green" />
                         <div>
                           <p className="text-sm font-medium text-light-brown">Zone de livraison</p>
-                          <p className="text-sm">Paris et sa banlieue uniquement</p>
+                          <p className="text-sm">Yaounde</p>
                         </div>
                       </div>
                     </div>

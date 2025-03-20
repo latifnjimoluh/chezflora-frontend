@@ -140,7 +140,7 @@ export default function CommandeDetailsPage({ params }: { params: { id: string }
 
   // Fonction pour formater le prix
   const formatPrice = (price: number) => {
-    return `${price.toFixed(2).replace(".", ",")} €`
+    return `${price.toFixed(2).replace(".", ",")} XAF`
   }
 
   // Fonction pour extraire les images du produit

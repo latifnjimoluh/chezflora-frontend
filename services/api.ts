@@ -1095,5 +1095,79 @@ export const toggleTestimonialFeatured = async (id: number): Promise<any> => {
   }
 }
 
-export default api
+// Ajouter ces nouvelles fonctions à votre fichier api.ts existant
 
+// Fonctions pour les contenus du site
+export const getAllSiteContents = async (): Promise<any> => {
+  try {
+    const response = await api.get("/api/site-content/all")
+    return response.data
+  } catch (error: any) {
+    console.error("Erreur lors de la récupération des contenus du site", error)
+    throw error.response?.data || { message: "Impossible de récupérer les contenus du site." }
+  }
+}
+
+export const getSiteContentByKey = async (key: string): Promise<any> => {
+  try {
+    const response = await api.get(`/api/site-content/${key}`)
+    return response.data
+  } catch (error: any) {
+    console.error(`Erreur lors de la récupération du contenu "${key}"`, error)
+    throw error.response?.data || { message: `Impossible de récupérer le contenu "${key}".` }
+  }
+}
+
+export const updateSiteContent = async (key: string, value: string): Promise<any> => {
+  try {
+    const response = await api.put(`/api/site-content/${key}`, { value })
+    return response.data
+  } catch (error: any) {
+    console.error(`Erreur lors de la mise à jour du contenu "${key}"`, error)
+    throw error.response?.data || { message: `Impossible de mettre à jour le contenu "${key}".` }
+  }
+}
+
+export const deleteSiteContent = async (key: string): Promise<any> => {
+  try {
+    const response = await api.delete(`/api/site-content/${key}`)
+    return response.data
+  } catch (error: any) {
+    console.error(`Erreur lors de la suppression du contenu "${key}"`, error)
+    throw error.response?.data || { message: `Impossible de supprimer le contenu "${key}".` }
+  }
+}
+
+// Ajouter cette fonction pour mettre à jour l'image de profil
+export const updateProfileImage = async (file: File) => {
+  try {
+    const formData = new FormData()
+    formData.append("image", file)
+
+    const token = localStorage.getItem("token")
+    if (!token) {
+      throw new Error("Utilisateur non authentifié")
+    }
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/update-profile-image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Erreur lors de la mise à jour de l'image de profil")
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error: any) {
+    console.error("Erreur lors de la mise à jour de l'image de profil:", error)
+    throw error
+  }
+}
+
+export default api

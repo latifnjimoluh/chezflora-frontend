@@ -11,6 +11,7 @@ import TestimonialCard from "@/components/testimonial-card"
 import BlogCard from "@/components/blog-card"
 import { Flower, Truck, Gift, Loader2 } from "lucide-react"
 import API from "@/services/apis"
+import { formatPrice } from "@/utils/format-utils"
 
 // Types pour les données
 interface Product {
@@ -50,11 +51,33 @@ interface Testimonial {
   image: string
 }
 
+interface SiteContent {
+  [key: string]: string
+}
+
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [siteContent, setSiteContent] = useState<SiteContent>({
+    hero_title: "Offrez un peu de nature et d'élégance avec ChezFlora",
+    hero_background_url: "/placeholder.svg?height=600&width=1920",
+    about_text:
+      "ChezFlora est née d'une passion pour la beauté naturelle des fleurs et d'un désir de partager cette élégance avec le monde. Nous créons des compositions florales uniques qui apportent joie et sérénité dans votre quotidien.",
+    feature_delivery_title: "Livraison rapide",
+    feature_delivery_text: "Vos fleurs livrées en parfait état, dans les meilleurs délais",
+    feature_personalization_title: "Personnalisation",
+    feature_personalization_text: "Des bouquets sur mesure, adaptés à vos goûts et occasions",
+    feature_decoration_title: "Décoration florale",
+    feature_decoration_text: "Des créations uniques pour sublimer vos espaces et événements",
+    products_section_title: "Nos Produits",
+    products_section_text:
+      "Découvrez notre sélection de fleurs fraîches, bouquets élégants et plantes d'intérieur pour tous les goûts et toutes les occasions.",
+    services_section_title: "Nos Services",
+    services_section_text:
+      "ChezFlora vous accompagne dans tous vos événements avec des services floraux personnalisés et professionnels.",
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -63,6 +86,15 @@ export default function Home() {
       try {
         setIsLoading(true)
         setError(null)
+
+        // Récupérer les contenus du site
+        const contents = await API.siteContent.getAllContents()
+        if (contents) {
+          setSiteContent((prevContent) => ({
+            ...prevContent,
+            ...contents,
+          }))
+        }
 
         // Récupérer les produits mis en avant
         const products = await API.products.getFeaturedProducts()
@@ -115,7 +147,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative h-[600px] w-full overflow-hidden">
         <Image
-          src="/placeholder.svg?height=600&width=1920"
+          src={siteContent.hero_background_url || "/placeholder.svg?height=600&width=1920"}
           alt="Composition florale élégante"
           width={1920}
           height={600}
@@ -123,11 +155,9 @@ export default function Home() {
           priority
         />
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 text-white">
-          <h1 className="font-script mb-6 text-center text-4xl md:text-5xl lg:text-6xl">
-            Offrez un peu de nature et d'élégance avec ChezFlora
-          </h1>
+          <h1 className="font-script mb-6 text-center text-4xl md:text-5xl lg:text-6xl">{siteContent.hero_title}</h1>
           <Button className="bg-soft-green hover:bg-soft-green/90 text-white">
-            <Link href="/products">Découvrir nos produits</Link>
+            <Link href="/boutique">Découvrir nos produits</Link>
           </Button>
         </div>
       </section>
@@ -136,33 +166,31 @@ export default function Home() {
       <section className="py-16 px-4 md:px-8 lg:px-16 bg-white bg-[url('/floral-pattern-light.svg')] bg-opacity-5">
         <div className="container mx-auto">
           <h2 className="font-script text-center text-3xl md:text-4xl text-light-brown mb-8">Notre Histoire</h2>
-          <p className="text-center max-w-3xl mx-auto text-light-brown mb-12">
-            ChezFlora est née d'une passion pour la beauté naturelle des fleurs et d'un désir de partager cette élégance
-            avec le monde. Nous créons des compositions florales uniques qui apportent joie et sérénité dans votre
-            quotidien.
-          </p>
+          <p className="text-center max-w-3xl mx-auto text-light-brown mb-12">{siteContent.about_text}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
             <div className="flex flex-col items-center text-center">
               <div className="bg-powder-pink p-4 rounded-full mb-4">
                 <Truck className="h-8 w-8 text-light-brown" />
               </div>
-              <h3 className="font-semibold text-xl mb-2 text-light-brown">Livraison rapide</h3>
-              <p className="text-light-brown/80">Vos fleurs livrées en parfait état, dans les meilleurs délais</p>
+              <h3 className="font-semibold text-xl mb-2 text-light-brown">{siteContent.feature_delivery_title}</h3>
+              <p className="text-light-brown/80">{siteContent.feature_delivery_text}</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="bg-powder-pink p-4 rounded-full mb-4">
                 <Flower className="h-8 w-8 text-light-brown" />
               </div>
-              <h3 className="font-semibold text-xl mb-2 text-light-brown">Personnalisation</h3>
-              <p className="text-light-brown/80">Des bouquets sur mesure, adaptés à vos goûts et occasions</p>
+              <h3 className="font-semibold text-xl mb-2 text-light-brown">
+                {siteContent.feature_personalization_title}
+              </h3>
+              <p className="text-light-brown/80">{siteContent.feature_personalization_text}</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="bg-powder-pink p-4 rounded-full mb-4">
                 <Gift className="h-8 w-8 text-light-brown" />
               </div>
-              <h3 className="font-semibold text-xl mb-2 text-light-brown">Décoration florale</h3>
-              <p className="text-light-brown/80">Des créations uniques pour sublimer vos espaces et événements</p>
+              <h3 className="font-semibold text-xl mb-2 text-light-brown">{siteContent.feature_decoration_title}</h3>
+              <p className="text-light-brown/80">{siteContent.feature_decoration_text}</p>
             </div>
           </div>
         </div>
@@ -171,11 +199,10 @@ export default function Home() {
       {/* Products Section */}
       <section className="py-16 px-4 md:px-8 lg:px-16 bg-off-white">
         <div className="container mx-auto">
-          <h2 className="font-script text-center text-3xl md:text-4xl text-light-brown mb-8">Nos Produits</h2>
-          <p className="text-center max-w-3xl mx-auto text-light-brown mb-12">
-            Découvrez notre sélection de fleurs fraîches, bouquets élégants et plantes d'intérieur pour tous les goûts
-            et toutes les occasions.
-          </p>
+          <h2 className="font-script text-center text-3xl md:text-4xl text-light-brown mb-8">
+            {siteContent.products_section_title}
+          </h2>
+          <p className="text-center max-w-3xl mx-auto text-light-brown mb-12">{siteContent.products_section_text}</p>
 
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -188,7 +215,7 @@ export default function Home() {
                   key={product.id_produit}
                   className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300"
                 >
-                  <Link href={`/products/${product.id_produit}`} className="block">
+                  <Link href={`/boutique/${product.id_produit}`} className="block">
                     <div className="relative h-64 w-full">
                       <Image
                         src={getFirstImage(product.images) || "/placeholder.svg"}
@@ -209,7 +236,7 @@ export default function Home() {
                       <h3 className="font-script text-xl text-light-brown mb-2">{product.nom}</h3>
                       <p className="text-light-brown/80 mb-3 line-clamp-2">{product.description}</p>
                       <div className="flex justify-between items-center">
-                        <span className="text-soft-green font-semibold">{product.prix} €</span>
+                        <span className="text-soft-green font-semibold">{formatPrice(Number(product.prix))}</span>
                         <span className="text-soft-green hover:underline">Voir détails →</span>
                       </div>
                     </CardContent>
@@ -223,7 +250,7 @@ export default function Home() {
 
           <div className="flex justify-center mt-12">
             <Button className="bg-beige hover:bg-beige/90 text-light-brown">
-              <Link href="/products">Voir la boutique</Link>
+              <Link href="/boutique">Voir la boutique</Link>
             </Button>
           </div>
         </div>
@@ -232,11 +259,10 @@ export default function Home() {
       {/* Services Section */}
       <section className="py-16 px-4 md:px-8 lg:px-16 bg-white bg-[url('/floral-pattern-light.svg')] bg-opacity-5">
         <div className="container mx-auto">
-          <h2 className="font-script text-center text-3xl md:text-4xl text-light-brown mb-8">Nos Services</h2>
-          <p className="text-center max-w-3xl mx-auto text-light-brown mb-12">
-            ChezFlora vous accompagne dans tous vos événements avec des services floraux personnalisés et
-            professionnels.
-          </p>
+          <h2 className="font-script text-center text-3xl md:text-4xl text-light-brown mb-8">
+            {siteContent.services_section_title}
+          </h2>
+          <p className="text-center max-w-3xl mx-auto text-light-brown mb-12">{siteContent.services_section_text}</p>
 
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -307,6 +333,12 @@ export default function Home() {
           ) : (
             <p className="text-center text-light-brown">Aucun témoignage disponible pour le moment.</p>
           )}
+
+          <div className="flex justify-center mt-8">
+            <Button variant="outline" className="border-light-brown text-light-brown hover:bg-light-brown/10">
+              <Link href="/testimonials">Voir tous les témoignages</Link>
+            </Button>
+          </div>
         </div>
       </section>
 

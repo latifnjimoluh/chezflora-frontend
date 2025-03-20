@@ -241,7 +241,7 @@ export default function MesReservationsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm">Prix: {reservation.prix} €</span>
+                            <span className="text-sm">Prix: {reservation.prix} XAF</span>
                           </div>
                           {reservation.service_dimension && (
                             <div className="flex items-center gap-2">
@@ -326,14 +326,14 @@ export default function MesReservationsPage() {
                           )}
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm">Prix proposé: {discussion.prix_propose} €</span>
+                            <span className="text-sm">Prix proposé: {discussion.prix_propose} XAF</span>
                           </div>
                         </div>
 
                         {discussion.reponse_admin !== undefined && (
                           <div className="mt-4 p-4 bg-blue-50 rounded-md">
                             <h4 className="font-medium text-blue-800 mb-2">Réponse de l'administrateur:</h4>
-                            <p className="text-blue-700">{discussion.reponse_admin ?? "Non spécifiée"} €</p>
+                            <p className="text-blue-700">{discussion.reponse_admin ?? "Non spécifiée"} XAF</p>
                           </div>
                         )}
                       </CardContent>

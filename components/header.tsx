@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { usePathname } from 'next/navigation';
+import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Menu, X, ShoppingBag, User } from "lucide-react"
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,35 +14,64 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import API from "@/services/apis"
 
 export default function Header() {
-
-  const router = useRouter();
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [logoUrl, setLogoUrl] = useState("/placeholder.svg?height=50&width=150")
+  const pathname = usePathname()
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
-  }, []);
+    // Vérifier si l'utilisateur est connecté
+    const checkAuth = () => {
+      const token = localStorage.getItem("token")
+      setIsLoggedIn(!!token)
+    }
+
+    // Récupérer le logo depuis la base de données
+    const fetchLogo = async () => {
+      try {
+        const siteContent = await API.siteContent.getContentByKey("logo_url")
+        if (siteContent && siteContent.value) {
+          setLogoUrl(siteContent.value)
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération du logo:", error)
+      }
+    }
+
+    checkAuth()
+    fetchLogo()
+
+    // Vérifier l'authentification à chaque changement de route
+    window.addEventListener("storage", checkAuth)
+
+    return () => {
+      window.removeEventListener("storage", checkAuth)
+    }
+  }, [])
 
   const handleLogout = () => {
-    localStorage.clear(); // Supprime toutes les données stockées
-    setIsLoggedIn(false);
-    router.replace("/"); // Redirige vers la page d'accueil
-  };
+    localStorage.removeItem("token")
+    setIsLoggedIn(false)
+
+    // Déclencher un événement de stockage pour que les autres composants soient informés
+    window.dispatchEvent(new Event("storage"))
+
+    router.replace("/")
+  }
 
   // Vérifier si la page actuelle correspond à un chemin donné
   const isActive = (path: string) => {
-    return pathname === path;
+    return pathname === path
   }
 
   // Vérifier si la page actuelle commence par un chemin donné (pour les sections)
   const isActiveSection = (path: string) => {
-    return pathname?.startsWith(path) ?? false; 
-  };
-  
+    return pathname?.startsWith(path) ?? false
+  }
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -61,7 +90,7 @@ export default function Header() {
           <div className="flex-1 flex justify-center md:justify-start">
             <Link href="/" className="flex items-center">
               <Image
-                src="/placeholder.svg?height=50&width=150"
+                src={logoUrl || "/placeholder.svg"}
                 alt="ChezFlora Logo"
                 width={150}
                 height={50}
@@ -91,18 +120,22 @@ export default function Header() {
                 >
                   Tous nos produits
                 </Link>
-                <Link
-                  href="/panier"
-                  className={`block px-4 py-2 ${isActive("/panier") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
-                >
-                  Mon panier
-                </Link>
-                <Link
-                  href="/commandes"
-                  className={`block px-4 py-2 ${isActive("/commandes") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
-                >
-                  Mes commandes
-                </Link>
+                {isLoggedIn && (
+                  <>
+                    <Link
+                      href="/panier"
+                      className={`block px-4 py-2 ${isActive("/panier") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
+                    >
+                      Mon panier
+                    </Link>
+                    <Link
+                      href="/commandes"
+                      className={`block px-4 py-2 ${isActive("/commandes") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
+                    >
+                      Mes commandes
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
             <div className="relative group">
@@ -118,18 +151,29 @@ export default function Header() {
                 >
                   Nos services
                 </Link>
-                <Link
-                  href="/services/reservation"
-                  className={`block px-4 py-2 ${isActive("/services/reservation") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
-                >
-                  Réserver un service
-                </Link>
-                <Link
-                  href="/services/reservations"
-                  className={`block px-4 py-2 ${isActive("/services/reservations") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
-                >
-                  Mes réservations
-                </Link>
+                {isLoggedIn ? (
+                  <>
+                    <Link
+                      href="/services/reservation"
+                      className={`block px-4 py-2 ${isActive("/services/reservation") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
+                    >
+                      Réserver un service
+                    </Link>
+                    <Link
+                      href="/services/reservations"
+                      className={`block px-4 py-2 ${isActive("/services/reservations") ? "bg-soft-green/10 text-soft-green" : "text-light-brown"} hover:bg-soft-green/10 hover:text-soft-green`}
+                    >
+                      Mes réservations
+                    </Link>
+                  </>
+                ) : (
+                  <Link
+                    href="/login?redirect=/services/reservation"
+                    className={`block px-4 py-2 text-light-brown hover:bg-soft-green/10 hover:text-soft-green`}
+                  >
+                    Réserver un service
+                  </Link>
+                )}
               </div>
             </div>
             <Link
@@ -145,6 +189,12 @@ export default function Header() {
               Blog
             </Link>
             <Link
+              href="/testimonials"
+              className={`${isActiveSection("/testimonials") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
+            >
+              Témoignages
+            </Link>
+            <Link
               href="/contact"
               className={`${isActive("/contact") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
             >
@@ -154,9 +204,11 @@ export default function Header() {
 
           {/* User actions */}
           <div className="flex items-center space-x-4">
-            <Link href="/panier" className="text-light-brown hover:text-soft-green transition-colors">
-              <ShoppingBag size={24} />
-            </Link>
+            {isLoggedIn && (
+              <Link href="/panier" className="text-light-brown hover:text-soft-green transition-colors">
+                <ShoppingBag size={24} />
+              </Link>
+            )}
 
             {isLoggedIn ? (
               <DropdownMenu>
@@ -234,24 +286,28 @@ export default function Header() {
                       Tous nos produits
                     </Link>
                   </li>
-                  <li>
-                    <Link
-                      href="/panier"
-                      className={`block ${isActive("/panier") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Mon panier
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/commandes"
-                      className={`block ${isActive("/commandes") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Mes commandes
-                    </Link>
-                  </li>
+                  {isLoggedIn && (
+                    <>
+                      <li>
+                        <Link
+                          href="/panier"
+                          className={`block ${isActive("/panier") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Mon panier
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/commandes"
+                          className={`block ${isActive("/commandes") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Mes commandes
+                        </Link>
+                      </li>
+                    </>
+                  )}
                 </ul>
               </li>
               <li>
@@ -270,24 +326,38 @@ export default function Header() {
                       Nos services
                     </Link>
                   </li>
-                  <li>
-                    <Link
-                      href="/services/reservation"
-                      className={`block ${isActive("/services/reservation") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Réserver un service
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/services/reservations"
-                      className={`block ${isActive("/services/reservations") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Mes réservations
-                    </Link>
-                  </li>
+                  {isLoggedIn ? (
+                    <>
+                      <li>
+                        <Link
+                          href="/services/reservation"
+                          className={`block ${isActive("/services/reservation") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Réserver un service
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/services/reservations"
+                          className={`block ${isActive("/services/reservations") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Mes réservations
+                        </Link>
+                      </li>
+                    </>
+                  ) : (
+                    <li>
+                      <Link
+                        href="/login?redirect=/services/reservation"
+                        className={`block text-light-brown hover:text-soft-green transition-colors`}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Réserver un service
+                      </Link>
+                    </li>
+                  )}
                 </ul>
               </li>
               <li>
@@ -306,6 +376,15 @@ export default function Header() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Blog
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/testimonials"
+                  className={`block ${isActiveSection("/testimonials") ? "text-soft-green font-medium" : "text-light-brown"} hover:text-soft-green transition-colors`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Témoignages
                 </Link>
               </li>
               <li>

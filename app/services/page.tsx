@@ -64,7 +64,8 @@ export default function ServicesPage() {
         setServices(parsedData)
 
         // Trouver un service mis en avant aléatoire
-        const featuredServices = parsedData.filter((service) => service.mis_en_avant)
+        //testcopilot
+        const featuredServices = parsedData.filter((service: Service) => service.mis_en_avant)
         if (featuredServices.length > 0) {
           const randomIndex = Math.floor(Math.random() * featuredServices.length)
           setFeaturedService(featuredServices[randomIndex])

@@ -162,7 +162,7 @@ const total = subtotal - discount + deliveryFee;
 
 // ✅ Fonction pour formater le prix
 const formatPrice = (price: number) => {
-  return `${price.toFixed(2).replace(".", ",")} €`;
+  return `${price.toFixed(2).replace(".", ",")}XAF`;
 };
 
   // Fonction pour extraire les images du produit
@@ -390,7 +390,7 @@ const formatPrice = (price: number) => {
                       </Button>
 
                       <div className="text-sm text-light-brown/70 text-center">
-                        <p>Livraison gratuite à partir de 50€ d'achat</p>
+                        <p>Livraison gratuite à partir de 1000 XAF d'achat</p>
                       </div>
                     </div>
                   </CardContent>

@@ -1,20 +1,29 @@
-"use client";
+"use client"
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { isUserLoggedIn } from "@/utils/format-utils"
 
-// Fonction pour vérifier si l'utilisateur est connecté
-export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem("token");
-};
-
-// Hook personnalisé pour protéger les pages nécessitant une connexion
-export const useAuth = () => {
-  const router = useRouter();
+/**
+ * Hook pour vérifier l'authentification de l'utilisateur
+ * Redirige vers la page de connexion si l'utilisateur n'est pas connecté
+ * @param redirectPath - Chemin vers lequel rediriger après la connexion
+ */
+export const useAuth = (redirectPath?: string) => {
+  const router = useRouter()
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.replace("/login"); // Redirige vers la page de connexion si l'utilisateur n'est pas connecté
+    // Vérifier si l'utilisateur est connecté
+    const isLoggedIn = isUserLoggedIn()
+
+    if (!isLoggedIn) {
+      // Rediriger vers la page de connexion avec le chemin de redirection
+      const redirectUrl = redirectPath ? `/login?redirect=${encodeURIComponent(redirectPath)}` : "/login"
+
+      router.push(redirectUrl)
     }
-  }, [router]);
-};
+  }, [router, redirectPath])
+
+  return { isAuthenticated: isUserLoggedIn() }
+}
+

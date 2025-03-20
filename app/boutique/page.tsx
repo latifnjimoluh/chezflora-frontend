@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Search, ShoppingBag } from 'lucide-react'
+import { Search, ShoppingBag } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,8 @@ import Footer from "@/components/footer"
 import { getAllProducts, addToCart } from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { formatPrice } from "@/utils/format-utils"
+import API from "@/services/apis"
 
 export default function BoutiquePage() {
   const [products, setProducts] = useState<any[]>([])
@@ -25,15 +27,31 @@ export default function BoutiquePage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("newest")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [siteContent, setSiteContent] = useState({
+    shop_title: "Notre Boutique",
+    shop_description:
+      "Découvrez notre sélection de fleurs fraîches, bouquets élégants et plantes d'intérieur pour tous les goûts et toutes les occasions.",
+  })
   const { toast } = useToast()
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
   const [showAddedToast, setShowAddedToast] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
+
+        // Récupérer les contenus du site
+        const contents = await API.siteContent.getAllContents()
+        if (contents) {
+          setSiteContent((prevContent) => ({
+            ...prevContent,
+            ...contents,
+          }))
+        }
+
+        // Récupérer les produits
         const data = await getAllProducts()
         setProducts(data)
       } catch (err) {
@@ -44,13 +62,8 @@ export default function BoutiquePage() {
       }
     }
 
-    fetchProducts()
+    fetchData()
   }, [])
-
-  // Fonction pour formater le prix
-  const formatPrice = (price: number) => {
-    return `${price.toFixed(2).replace(".", ",")} €`
-  }
 
   // Fonction pour filtrer les produits par catégorie
   const toggleCategory = (category: string) => {
@@ -89,15 +102,15 @@ export default function BoutiquePage() {
     try {
       setAddingToCart(product.id_produit)
       await addToCart(product.id_produit, 1)
-      
+
       // Afficher la notification
       setShowAddedToast(product.id_produit)
-      
+
       // Masquer la notification après 3 secondes
       setTimeout(() => {
         setShowAddedToast(null)
       }, 3000)
-      
+
       toast({
         title: "Produit ajouté",
         description: `${product.nom} ajouté au panier`,
@@ -119,11 +132,8 @@ export default function BoutiquePage() {
 
       <main className="flex-1 py-8 px-4 md:px-8 lg:px-16 bg-off-white bg-[url('/floral-pattern-light.svg')] bg-opacity-5">
         <div className="container mx-auto">
-          <h1 className="font-script text-4xl text-center text-light-brown mb-2">Notre Boutique</h1>
-          <p className="text-center text-light-brown/80 mb-8 max-w-2xl mx-auto">
-            Découvrez notre sélection de fleurs fraîches, bouquets élégants et plantes d'intérieur pour tous les goûts
-            et toutes les occasions.
-          </p>
+          <h1 className="font-script text-4xl text-center text-light-brown mb-2">{siteContent.shop_title}</h1>
+          <p className="text-center text-light-brown/80 mb-8 max-w-2xl mx-auto">{siteContent.shop_description}</p>
 
           {/* Search and Filter Bar */}
           <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -251,9 +261,7 @@ export default function BoutiquePage() {
                           </div>
                           <CardContent className="p-4">
                             <h3 className="font-semibold text-lg text-light-brown">{product.nom}</h3>
-                            <p className="text-soft-green font-medium mt-1">
-                              {formatPrice(Number.parseFloat(product.prix))}
-                            </p>
+                            <p className="text-soft-green font-medium mt-1">{formatPrice(Number(product.prix))}</p>
                             <div className="mt-3 flex gap-2">
                               <Button
                                 className="flex-1 bg-beige hover:bg-beige/90 text-light-brown"
@@ -296,8 +304,8 @@ export default function BoutiquePage() {
                   variant="secondary"
                   className="bg-white text-soft-green hover:bg-white/90"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    router.push("/panier");
+                    e.stopPropagation()
+                    router.push("/panier")
                   }}
                 >
                   Voir le panier
@@ -307,8 +315,8 @@ export default function BoutiquePage() {
                   variant="ghost"
                   className="text-white hover:bg-soft-green/90"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    setShowAddedToast(null);
+                    e.stopPropagation()
+                    setShowAddedToast(null)
                   }}
                 >
                   Continuer

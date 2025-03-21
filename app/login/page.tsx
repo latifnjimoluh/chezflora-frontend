@@ -1,64 +1,50 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
+import Image from "next/image"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
-import { Icons } from "@/components/icons"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Mail, Lock, AlertCircle } from "lucide-react"
+import { loginUser } from "@/services/api"
 
-const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
-  }),
-})
-
-const LoginPage = () => {
+export default function LoginPage() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
-  const { toast } = useToast()
+  const [formData, setFormData] = useState({
+    identifier: "",
+    password: "",
+  })
+  // État pour vérifier si le code s'exécute côté client
   const [isClient, setIsClient] = useState(false)
 
+  // Effet pour marquer quand le composant est monté côté client
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  })
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.message || "An error occurred during login.")
-        return
-      }
+      const data = await loginUser(formData.identifier, formData.password)
 
       if (data.status === "verification") {
         setError("Votre compte n'est pas encore activé. Veuillez vérifier votre email.")
+        // Vérifier si on est côté client avant d'utiliser localStorage
         if (typeof window !== "undefined") {
           localStorage.setItem("email", data.email)
         }
@@ -68,78 +54,120 @@ const LoginPage = () => {
         return
       }
 
-      toast({
-        title: "Login successful!",
-        description: "Redirecting...",
-      })
-
-      setTimeout(() => {
-        router.replace("/dashboard")
-      }, 2000)
-    } catch (error: any) {
-      setError(error?.message || "An unexpected error occurred. Please try again.")
+      // Vérifier si on est côté client avant d'utiliser localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("token", data.token)
+        localStorage.setItem("role", data.role)
+      }
+      router.push("/")
+    } catch (err: any) {
+      setError(err.message || "Identifiants incorrects.")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Utiliser console.log uniquement côté client
+  useEffect(() => {
+    if (isClient && typeof window !== "undefined") {
+      console.log("LocalStorage Data:", localStorage)
+    }
+  }, [isClient])
+
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Email" {...field} type="email" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Password" {...field} type="password" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {error && <div className="text-red-500 text-sm">{error}</div>}
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait
-                </>
-              ) : (
-                "Login"
-              )}
-            </Button>
-          </form>
-        </Form>
-        <div className="mt-4 text-center">
-          <a
-            href="/register"
-            className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800"
-          >
-            Don't have an account? Register!
-          </a>
+    <div className="min-h-screen bg-off-white bg-[url('/floral-pattern-light.svg')] bg-opacity-5 flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        <Link href="/" className="mb-8">
+          <Image
+            src="/placeholder.svg?height=50&width=150"
+            alt="ChezFlora Logo"
+            width={150}
+            height={50}
+            className="h-12 w-auto"
+          />
+        </Link>
+
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-md p-8">
+            <h1 className="font-script text-3xl text-center text-light-brown mb-2">Connexion</h1>
+            <p className="text-center text-light-brown/80 mb-6">Accédez à votre espace personnel</p>
+
+            {error && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="identifier" className="text-light-brown">
+                  Email ou Téléphone
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-light-brown/60" />
+                  <Input
+                    id="identifier"
+                    name="identifier"
+                    type="text"
+                    placeholder="votre@email.com ou téléphone"
+                    className="pl-10 bg-beige/30 border-soft-green/20 focus:border-soft-green"
+                    value={formData.identifier}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-light-brown">
+                    Mot de passe
+                  </Label>
+                  <Link href="/forgot-password" className="text-soft-green text-sm hover:underline">
+                    Mot de passe oublié ?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-light-brown/60" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="pl-10 bg-beige/30 border-soft-green/20 focus:border-soft-green"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-soft-green hover:bg-soft-green/90 text-white mt-6"
+                disabled={isLoading}
+              >
+                {isLoading ? "Connexion en cours..." : "Se connecter"}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-light-brown">
+                Vous n'avez pas de compte ?{" "}
+                <Link href="/register" className="text-soft-green hover:underline">
+                  Inscrivez-vous
+                </Link>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
+
+      <footer className="py-4 text-center text-light-brown/70 text-sm">
+        <p>&copy; {new Date().getFullYear()} ChezFlora. Tous droits réservés.</p>
+      </footer>
     </div>
   )
 }
-
-export default LoginPage
 

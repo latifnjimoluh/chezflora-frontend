@@ -7,12 +7,17 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   // Passer la fonction d'initialisation à useState pour qu'elle ne s'exécute qu'une fois
   const [storedValue, setStoredValue] = useState<T>(initialValue)
 
-  // Initialiser l'état côté client uniquement
-  const [initialized, setInitialized] = useState(false)
+  // État pour vérifier si le code s'exécute côté client
+  const [isClient, setIsClient] = useState(false)
+
+  // Effet pour marquer quand le composant est monté côté client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Effet pour charger la valeur depuis localStorage côté client
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (isClient && typeof window !== "undefined") {
       try {
         const item = localStorage.getItem(key)
         const value = item ? JSON.parse(item) : initialValue
@@ -21,21 +26,27 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         console.error(error)
         setStoredValue(initialValue)
       }
-      setInitialized(true)
     }
-  }, [key, initialValue])
+  }, [key, initialValue, isClient])
 
-  // Effet pour mettre à jour localStorage quand la valeur change
-  useEffect(() => {
-    if (initialized && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(key, JSON.stringify(storedValue))
-      } catch (error) {
-        console.error(error)
+  // Fonction pour mettre à jour la valeur dans localStorage et l'état
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      // Permettre à la valeur d'être une fonction pour la même API que useState
+      const valueToStore = value instanceof Function ? value(storedValue) : value
+
+      // Sauvegarder dans l'état
+      setStoredValue(valueToStore)
+
+      // Sauvegarder dans localStorage uniquement côté client
+      if (typeof window !== "undefined") {
+        localStorage.setItem(key, JSON.stringify(valueToStore))
       }
+    } catch (error) {
+      console.error(error)
     }
-  }, [key, storedValue, initialized])
+  }
 
-  return [storedValue, setStoredValue] as const
+  return [storedValue, setValue] as const
 }
 

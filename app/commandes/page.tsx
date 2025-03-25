@@ -466,7 +466,7 @@ export default function CommandePage() {
                         <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0 text-soft-green" />
                         <div>
                           <p className="text-sm font-medium text-light-brown">Zone de livraison</p>
-                          <p className="text-sm">Paris et sa banlieue uniquement</p>
+                          <p className="text-sm">Yaounde et sa banlieue uniquement</p>
                         </div>
                       </div>
                     </div>

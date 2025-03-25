@@ -351,7 +351,7 @@ export default function AbonnementsPage() {
     }
   
     // 🔹 Formatter le prix
-    const formattedPrice = parsedPrice.toFixed(2).replace(".", ",") + " €"
+    const formattedPrice = parsedPrice.toFixed(2).replace(".", ",") + " XAF"
   
     switch (frequency.toLowerCase()) {
       case "mensuel":

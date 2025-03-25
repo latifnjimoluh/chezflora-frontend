@@ -1,5 +1,5 @@
 /**
- * Formate un prix en remplaçant le symbole € par XAF
+ * Formate un prix en remplaçant le symbole XAF par XAF
  * @param price - Le prix à formater
  * @returns Le prix formaté avec XAF
  */

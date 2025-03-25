@@ -381,7 +381,7 @@ export default function ReservationPage() {
 
                           <div className="space-y-2">
                             <Label htmlFor="prixPropose" className="text-light-brown">
-                              Budget proposé (€) <span className="text-red-500">*</span>
+                              Budget proposé (XAF) <span className="text-red-500">*</span>
                             </Label>
                             <Input
                               id="prixPropose"
@@ -526,11 +526,11 @@ export default function ReservationPage() {
                         {formData.prixPropose && (
                           <div className="flex items-start space-x-2 text-light-brown/80">
                             <div className="h-5 w-5 mt-0.5 flex-shrink-0 text-soft-green flex items-center justify-center font-bold">
-                              €
+                              XAF
                             </div>
                             <div>
                               <p className="text-sm font-medium text-light-brown">Budget proposé</p>
-                              <p className="text-sm">{Number.parseFloat(formData.prixPropose).toFixed(2)} €</p>
+                              <p className="text-sm">{Number.parseFloat(formData.prixPropose).toFixed(2)} XAF</p>
                             </div>
                           </div>
                         )}

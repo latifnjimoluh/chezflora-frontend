@@ -250,7 +250,7 @@ export default function ServiceDetailPage({ params }: { params: { id: string } }
 
               <div className="flex items-baseline space-x-2">
                 <span className="text-2xl font-semibold text-light-brown">
-                  {typeof service.tarification === "number" ? `${service.tarification} €` : service.tarification}
+                  {typeof service.tarification === "number" ? `${service.tarification} XAF` : service.tarification}
                 </span>
                 {service.mis_en_avant && <Badge className="bg-soft-green text-white">Populaire</Badge>}
               </div>

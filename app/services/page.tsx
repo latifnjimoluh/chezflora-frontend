@@ -325,7 +325,7 @@ function ServiceCard({
         <p className="text-light-brown/80 mb-4 line-clamp-2">{service.description}</p>
         <div className="flex justify-between items-center">
           <span className="text-soft-green font-medium">
-            {typeof service.tarification === "number" ? `${service.tarification} €` : service.tarification}
+            {typeof service.tarification === "number" ? `${service.tarification} XAF` : service.tarification}
           </span>
           <Button className="bg-beige hover:bg-beige/90 text-light-brown">
             <Link href={`/services/${service.id_service}`}>Voir détails</Link>

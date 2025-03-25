@@ -403,6 +403,8 @@ export const getUserReservations = async (): Promise<any> => {
   }
 }
 
+
+
 // Fonction pour annuler une réservation
 export const cancelReservation = async (reservation_id: number): Promise<any> => {
   try {

@@ -140,6 +140,20 @@ export default function Home() {
     return parsedImages && parsedImages.length > 0 ? parsedImages[0] : "/placeholder.svg?height=400&width=400"
   }
 
+  // Fonction pour formater la date
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+
+  // Exemple d'utilisation
+  const exampleDate = "2025-02-04T23:00:00.000Z"
+  console.log(formatDate(exampleDate)) // Affichera "4 février 2025"
+
   return (
     <div className="flex min-h-screen flex-col bg-off-white">
       <Header />

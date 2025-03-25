@@ -164,7 +164,7 @@ export default function BlogPage() {
         {/* Hero Section */}
         <section className="relative h-[500px] w-full overflow-hidden">
           <Image
-            src="/placeholder.svg?height=500&width=1920"
+            src="https://res.cloudinary.com/dtrjwgblw/image/upload/v1742735193/chezflora/produits/mlo48aor3naclazz7xhs.png"
             alt="Blog ChezFlora"
             width={1920}
             height={500}
@@ -235,7 +235,7 @@ export default function BlogPage() {
                   <div className="md:w-1/3">
                     <div className="relative h-64 w-full rounded-lg overflow-hidden">
                       <Image
-                        src="/placeholder.svg?height=300&width=300"
+                        src="https://res.cloudinary.com/dtrjwgblw/image/upload/v1742740519/chezflora/site-content/vzlafedr0ajihrjsru5y.png"
                         alt="Blog ChezFlora"
                         fill
                         className="object-cover"
@@ -311,20 +311,22 @@ export default function BlogPage() {
                               <div className="text-soft-green font-medium group-hover:underline">Lire la suite →</div>
                               {post.tags && post.tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
-                                  {post.tags.slice(0, 2).map((tag) => (
-                                    <span
-                                      key={tag}
-                                      className="inline-flex items-center bg-beige/50 px-2 py-0.5 rounded-full text-xs text-light-brown"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        router.push(`/blog/tag/${tag.toLowerCase().replace(/\s+/g, "-")}`)
-                                      }}
-                                    >
-                                      <Tag className="h-2.5 w-2.5 mr-1" />
-                                      {tag}
-                                    </span>
-                                  ))}
-                                  {post.tags.length > 2 && (
+                                  {Array.isArray(post.tags)
+                                    ? post.tags.slice(0, 2).map((tag) => (
+                                        <span
+                                          key={tag}
+                                          className="inline-flex items-center bg-beige/50 px-2 py-0.5 rounded-full text-xs text-light-brown"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            router.push(`/blog/tag/${tag.toLowerCase().replace(/\s+/g, "-")}`)
+                                          }}
+                                        >
+                                          <Tag className="h-2.5 w-2.5 mr-1" />
+                                          {tag}
+                                        </span>
+                                      ))
+                                    : null}
+                                  {Array.isArray(post.tags) && post.tags.length > 2 && (
                                     <span className="text-xs text-light-brown/70">+{post.tags.length - 2}</span>
                                   )}
                                 </div>

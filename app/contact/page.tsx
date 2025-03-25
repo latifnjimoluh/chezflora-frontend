@@ -79,16 +79,131 @@ export default function ContactPage() {
     const fetchData = async () => {
       try {
         // Récupérer les informations de contact
-        const infoResponse = await API.contact.getContactInfo()
-        setContactInfo(infoResponse)
+        try {
+          const infoResponse = await API.contact.getContactInfo()
+          console.log("Contact info response:", infoResponse) // Add this for debugging
+
+          if (infoResponse) {
+            // Transform the API response to match the expected structure
+            // The API is returning different keys than what your component expects
+            setContactInfo({
+              address: {
+                value: infoResponse.footer_address || "123 Rue des Fleurs, Yaounde",
+                icon: "MapPin",
+              },
+              phone: {
+                value: infoResponse.footer_phone || "+297 672475691",
+                icon: "Phone",
+              },
+              email: {
+                value: infoResponse.footer_email || "contact@chezflora.com",
+                icon: "Mail",
+              },
+              hours: {
+                value: infoResponse.footer_hours || "Lundi - Vendredi: 9h - 18h\nSamedi: 10h - 16h\nDimanche: Fermé",
+                icon: "Clock",
+              },
+            })
+          } else {
+            // Fallback data if API returns empty
+            setContactInfo({
+              address: { value: "123 Rue des Fleurs, 75000 Paris", icon: "MapPin" },
+              phone: { value: "+33 1 23 45 67 89", icon: "Phone" },
+              email: { value: "contact@chezflora.com", icon: "Mail" },
+              hours: { value: "Lundi - Vendredi: 9h - 18h\nSamedi: 10h - 16h\nDimanche: Fermé", icon: "Clock" },
+            })
+          }
+        } catch (err) {
+          console.error("Erreur lors de la récupération des informations de contact:", err)
+          // Fallback data
+          setContactInfo({
+            address: { value: "123 Rue des Fleurs, 75000 Paris", icon: "MapPin" },
+            phone: { value: "+33 1 23 45 67 89", icon: "Phone" },
+            email: { value: "contact@chezflora.com", icon: "Mail" },
+            hours: { value: "Lundi - Vendredi: 9h - 18h\nSamedi: 10h - 16h\nDimanche: Fermé", icon: "Clock" },
+          })
+        }
 
         // Récupérer les sujets de contact
-        const subjectsResponse = await API.contact.getContactSubjects()
-        setSubjects(subjectsResponse)
+        try {
+          const subjectsResponse = await API.contact.getContactSubjects()
+          if (subjectsResponse && subjectsResponse.length > 0) {
+            setSubjects(subjectsResponse)
+          } else {
+            // Fallback data
+            setSubjects([
+              { id: 1, value: "information", label: "Demande d'information" },
+              { id: 2, value: "commande", label: "Question sur une commande" },
+              { id: 3, value: "reclamation", label: "Réclamation" },
+              { id: 4, value: "autre", label: "Autre" },
+            ])
+          }
+        } catch (err) {
+          console.error("Erreur lors de la récupération des sujets de contact:", err)
+          // Fallback data
+          setSubjects([
+            { id: 1, value: "information", label: "Demande d'information" },
+            { id: 2, value: "commande", label: "Question sur une commande" },
+            { id: 3, value: "reclamation", label: "Réclamation" },
+            { id: 4, value: "autre", label: "Autre" },
+          ])
+        }
 
         // Récupérer les FAQ
-        const faqsResponse = await API.contact.getFaqs()
-        setFaqs(faqsResponse)
+        try {
+          const faqsResponse = await API.contact.getFaqs()
+          if (faqsResponse && faqsResponse.length > 0) {
+            setFaqs(faqsResponse)
+          } else {
+            // Fallback data
+            setFaqs([
+              {
+                id: 1,
+                question: "Comment passer une commande ?",
+                answer:
+                  "Vous pouvez passer une commande directement sur notre site web ou nous contacter par téléphone.",
+                category: "commandes",
+              },
+              {
+                id: 2,
+                question: "Quels sont les délais de livraison ?",
+                answer: "Nos délais de livraison varient entre 24h et 48h selon votre localisation.",
+                category: "livraison",
+              },
+              {
+                id: 3,
+                question: "Comment entretenir mes fleurs ?",
+                answer:
+                  "Changez l'eau régulièrement et coupez les tiges en biseau pour prolonger la durée de vie de vos fleurs.",
+                category: "entretien",
+              },
+            ])
+          }
+        } catch (err) {
+          console.error("Erreur lors de la récupération des FAQ:", err)
+          // Fallback data
+          setFaqs([
+            {
+              id: 1,
+              question: "Comment passer une commande ?",
+              answer: "Vous pouvez passer une commande directement sur notre site web ou nous contacter par téléphone.",
+              category: "commandes",
+            },
+            {
+              id: 2,
+              question: "Quels sont les délais de livraison ?",
+              answer: "Nos délais de livraison varient entre 24h et 48h selon votre localisation.",
+              category: "livraison",
+            },
+            {
+              id: 3,
+              question: "Comment entretenir mes fleurs ?",
+              answer:
+                "Changez l'eau régulièrement et coupez les tiges en biseau pour prolonger la durée de vie de vos fleurs.",
+              category: "entretien",
+            },
+          ])
+        }
       } catch (err) {
         console.error("Erreur lors du chargement des données:", err)
         setError("Une erreur est survenue lors du chargement des données. Veuillez réessayer.")
@@ -152,7 +267,8 @@ export default function ContactPage() {
         {/* Hero Section */}
         <section className="relative h-[300px] w-full overflow-hidden">
           <Image
-            src="/placeholder.svg?height=300&width=1920"
+          src="https://res.cloudinary.com/dtrjwgblw/image/upload/v1742734439/chezflora/produits/zmzm4eqray6j1e71t9py.png"
+            
             alt="Contactez ChezFlora"
             width={1920}
             height={300}

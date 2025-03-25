@@ -144,7 +144,7 @@ export default function ServicesPage() {
         {/* Hero Section */}
         <section className="relative h-[400px] w-full overflow-hidden">
           <Image
-            src="/placeholder.svg?height=400&width=1920"
+            src="https://res.cloudinary.com/dtrjwgblw/image/upload/v1742736359/chezflora/services/30eed01fa143883830450250cd42b165.png"
             alt="Services floraux ChezFlora"
             width={1920}
             height={400}

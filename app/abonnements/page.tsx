@@ -13,16 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  Flower,
-  CreditCard,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-} from "lucide-react"
+import { CheckCircle, ChevronDown, ChevronUp, Flower, CreditCard, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import {
@@ -479,7 +470,7 @@ export default function AbonnementsPage() {
                           <div>
                             <h3 className="font-medium text-light-brown">{subscription.type_abonnement}</h3>
                             <div className="text-sm text-light-brown/70">
-                              {getFrequencyName(subscription.frequence)} • {subscription.prix || "Prix non spécifié"}
+                              {getFrequencyName(subscription.frequence) || "Fréquence non spécifiée"} • {subscription.prix ? `${subscription.prix} XAF` : "Prix non spécifié"}
                             </div>
                           </div>
                         </div>
@@ -955,4 +946,3 @@ export default function AbonnementsPage() {
     </div>
   )
 }
-
